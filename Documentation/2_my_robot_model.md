@@ -76,3 +76,5 @@ ros2 launch my_arm_gz gz_sim.launch.py use_sim_time:=true model:=my_arm_puma.urd
 ros2 launch my_arm_control send_pose_trajectory.launch.py use_sim_time:=true robot_model:=puma
 ````
 ![](./Images/send_pose_puma.png)
+
+> Requirement! python3 -m pip install "numpy<1.24" --force-reinstall
