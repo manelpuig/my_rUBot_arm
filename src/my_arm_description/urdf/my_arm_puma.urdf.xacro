@@ -176,6 +176,7 @@
   <xacro:wrist_link name="link5" mass="$(arg m_wrist)" mat="blue"/>
   <xacro:wrist_link name="link6" mass="$(arg m_wrist)" mat="blue"/>
 
+
   <!-- =========================
        Joints (KINEMATICALLY SIMPLE)
        ========================= -->
@@ -242,6 +243,38 @@
     <dynamics damping="0.2" friction="0.0"/>
   </joint>
 
+  <!-- =========================
+       Tool / TCP frame
+       ========================= -->
+
+  <xacro:arg name="tool_z" default="0.15"/>
+  <xacro:property name="tool_z" value="$(arg tool_z)"/>
+
+  <link name="puma_tool">
+    <visual>
+      <origin xyz="0 0 ${tool_z/2.0}" rpy="0 0 0"/>
+      <geometry>
+        <cylinder radius="0.015" length="${tool_z}"/>
+      </geometry>
+      <material name="dark"/>
+    </visual>
+
+    <collision>
+      <origin xyz="0 0 ${tool_z/2.0}" rpy="0 0 0"/>
+      <geometry>
+        <cylinder radius="0.015" length="${tool_z}"/>
+      </geometry>
+    </collision>
+
+    <xacro:inertial_cylinder_z mass="0.02" radius="0.015" length="${tool_z}"/>
+  </link>
+
+  <joint name="link6_to_puma_tool" type="fixed">
+    <parent link="link6"/>
+    <child link="puma_tool"/>
+    <origin xyz="0 0 ${tool_z}" rpy="0 0 0"/>
+  </joint>
+  
   <!-- =========================
        ros2_control (gz_ros2_control)
        ========================= -->
