@@ -36,7 +36,7 @@ source install/setup.bash
 Start Gazebo, RViz and ros2_control:
 
 ```bash
-ros2 launch my_arm_gz bringup_puma.launch.py
+ros2 launch my_arm_gz gz_sim.launch.py model:=my_arm_puma.urdf.xacro
 ```
 
 Verify that the controller is active:
