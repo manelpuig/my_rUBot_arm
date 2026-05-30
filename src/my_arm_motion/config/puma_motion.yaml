@@ -1,0 +1,21 @@
+move_to_pose:
+  ros__parameters:
+
+    joint_names:
+      - joint1
+      - joint2
+      - joint3
+      - joint4
+      - joint5
+      - joint6
+
+    group_name: arm
+
+    base_link: base_link
+    end_effector: puma_tool
+
+    max_velocity: 0.3
+    max_acceleration: 0.3
+
+    execute: true
+    print_debug: true

@@ -11,9 +11,9 @@ from launch_ros.parameter_descriptions import ParameterValue
 
 def generate_launch_description():
     desc_share = get_package_share_directory("my_arm_description")
-    gz_share = get_package_share_directory("my_arm_gz")
+    gz_share = get_package_share_directory("my_arm_gazebo")
 
-    default_model = "my_arm.urdf.xacro"
+    default_model = "my_arm_puma.urdf.xacro"
     world_path = os.path.join(gz_share, "worlds", "empty.sdf")
     rviz_path = os.path.join(desc_share, "rviz", "my_arm.rviz")
     controllers_yaml = os.path.join(gz_share, "config", "gz_controllers.yaml")

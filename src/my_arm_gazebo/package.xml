@@ -1,6 +1,6 @@
 <?xml version="1.0"?>
 <package format="3">
-  <name>my_arm_gz</name>
+  <name>my_arm_gazebo</name>
   <version>0.0.1</version>
   <description>Gazebo Sim bringup for my_arm using ros2_control + gz_ros2_control.</description>
   <maintainer email="you@todo.todo">you</maintainer>

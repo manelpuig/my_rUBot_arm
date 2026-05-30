@@ -1,0 +1,18 @@
+<?xml version="1.0"?>
+<package format="3">
+  <name>my_arm_motion</name>
+  <version>0.0.0</version>
+  <description>Generic MoveIt2 motion nodes for robot arms.</description>
+
+  <maintainer email="puigmanel@gmail.com">Manel Puig</maintainer>
+  <license>BSD</license>
+
+  <buildtool_depend>ament_python</buildtool_depend>
+
+  <exec_depend>rclpy</exec_depend>
+  <exec_depend>pymoveit2</exec_depend>
+
+  <export>
+    <build_type>ament_python</build_type>
+  </export>
+</package>

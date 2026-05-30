@@ -1,6 +1,6 @@
 from setuptools import setup
 
-package_name = "my_arm_gz"
+package_name = "my_arm_gazebo"
 
 setup(
     name=package_name,
@@ -9,7 +9,7 @@ setup(
     data_files=[
         ("share/ament_index/resource_index/packages", ["resource/" + package_name]),
         ("share/" + package_name, ["package.xml"]),
-        ("share/" + package_name + "/launch", ["launch/gz_sim.launch.py"]),
+        ("share/" + package_name + "/launch", ["launch/my_arm_gazebo.launch.py"]),
         ("share/" + package_name + "/worlds", ["worlds/empty.sdf"]),
         ("share/" + package_name + "/config", ["config/gz_controllers.yaml"]),
     ],

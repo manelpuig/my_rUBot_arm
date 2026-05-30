@@ -31,7 +31,10 @@ def generate_launch_description():
         executable="rviz2",
         name="rviz2",
         output="screen",
-        arguments=[],
+        arguments=[
+            "-d",
+            str(moveit_config.package_path / "config/moveit.rviz"),
+        ],
         parameters=[
             moveit_config.to_dict(),
             use_sim_time,
