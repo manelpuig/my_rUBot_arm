@@ -90,14 +90,6 @@ def generate_launch_description():
         output="screen",
     )
 
-    rviz = Node(
-        package="rviz2",
-        executable="rviz2",
-        arguments=["-d", rviz_path],
-        parameters=[{"use_sim_time": use_sim_time}],
-        output="screen",
-    )
-
     return LaunchDescription([
         declare_use_sim_time,
         declare_model,
@@ -115,6 +107,4 @@ def generate_launch_description():
         TimerAction(period=3.0, actions=[spawner_jsb]),
         TimerAction(period=4.0, actions=[spawner_arm]),
 
-        # Start RViz LAST (avoid early TF/clock issues)
-        TimerAction(period=6.0, actions=[rviz]),
     ])

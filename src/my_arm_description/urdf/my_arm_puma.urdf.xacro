@@ -244,43 +244,46 @@
   </joint>
 
   <!-- =========================
-       Tool / TCP frame
-       ========================= -->
+     Tool / TCP frame
+     ========================= -->
 
-  <xacro:arg name="tool_z" default="0.15"/>
-  <xacro:property name="tool_z" value="$(arg tool_z)"/>
+    <xacro:arg name="tool_z" default="0.15"/>
+    <xacro:arg name="tool_radius" default="0.02"/>
 
-  <link name="puma_tool">
+    <xacro:property name="tool_z" value="$(arg tool_z)"/>
+    <xacro:property name="tool_radius" value="$(arg tool_radius)"/>
+
+    <link name="puma_tool">
     <visual>
-      <origin xyz="0 0 ${tool_z/2.0}" rpy="0 0 0"/>
-      <geometry>
-        <cylinder radius="0.015" length="${tool_z}"/>
-      </geometry>
-      <material name="dark"/>
+        <origin xyz="0 0 0" rpy="0 0 0"/>
+        <geometry>
+        <sphere radius="${tool_radius}"/>
+        </geometry>
+        <material name="dark"/>
     </visual>
 
     <collision>
-      <origin xyz="0 0 ${tool_z/2.0}" rpy="0 0 0"/>
-      <geometry>
-        <cylinder radius="0.015" length="${tool_z}"/>
-      </geometry>
+        <origin xyz="0 0 0" rpy="0 0 0"/>
+        <geometry>
+        <sphere radius="${tool_radius}"/>
+        </geometry>
     </collision>
 
-    <xacro:inertial_cylinder_z mass="0.02" radius="0.015" length="${tool_z}"/>
-  </link>
+    <xacro:inertial_sphere mass="0.001" radius="${tool_radius}"/>
+    </link>
 
-  <joint name="link6_to_puma_tool" type="fixed">
+    <joint name="link6_to_puma_tool" type="fixed">
     <parent link="link6"/>
     <child link="puma_tool"/>
     <origin xyz="0 0 ${tool_z}" rpy="0 0 0"/>
-  </joint>
-  
+    </joint>
+    
   <!-- =========================
        ros2_control (gz_ros2_control)
        ========================= -->
   <ros2_control name="MyArmSystem" type="system">
     <hardware>
-      <plugin>gz_ros2_control/GazeboSimSystem</plugin>
+      <plugin>ign_ros2_control/IgnitionSystem</plugin>
     </hardware>
 
     <joint name="joint1">
