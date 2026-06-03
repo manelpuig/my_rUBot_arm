@@ -24,6 +24,7 @@ setup(
     entry_points={
         "console_scripts": [
             "move_to_pose = my_arm_motion.move_to_pose:main",
+            "move_to_pose_official = my_arm_motion.move_to_pose_official:main",
         ],
     },
 )
