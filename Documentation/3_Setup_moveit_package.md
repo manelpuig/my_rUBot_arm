@@ -86,3 +86,24 @@ You will need to do a couple of modifications in order to have it fully working:
     - Modify the`moveit_controllers.yaml`file according to the previous names
 
 Having done the proper modifications to your MoveIt2 package, you are now ready to start using it to control the simulated UR3e robotic arm.
+
+## Test moveit package
+
+- Bringup
+````bash
+ros2 launch my_arm_gazebo my_arm_gazebo.launch.py use_sim_time:=true model:=my_arm_puma.urdf.xacro
+````
+- Launch moveit2
+````bash
+ros2 launch puma_moveit_config move_group.launch.py use_sim_time:=true
+````
+- Launch puma_pose.py
+````bash
+ros2 run my_arm_motion puma_pose_exe \
+  --ros-args \
+  -p use_sim_time:=true \
+  -p target_xyz:="[0.45, 0.00, 0.35]" \
+  -p target_rpy:="[0.0, 0.0, 0.0]" \
+  -p seed_from_joint_states:=true \
+  -p execute:=true
+````

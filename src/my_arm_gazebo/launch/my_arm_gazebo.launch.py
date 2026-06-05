@@ -90,12 +90,22 @@ def generate_launch_description():
         output="screen",
     )
 
+    clock_bridge = Node(
+        package="ros_gz_bridge",
+        executable="parameter_bridge",
+        arguments=[
+            "/clock@rosgraph_msgs/msg/Clock[gz.msgs.Clock",
+        ],
+        output="screen",
+    )
+
     return LaunchDescription([
         declare_use_sim_time,
         declare_model,
 
         # Start Gazebo first
         gz,
+        clock_bridge,
 
         # Publish description immediately (TF tree exists early)
         rsp,
