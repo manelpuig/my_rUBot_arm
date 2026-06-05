@@ -45,7 +45,7 @@ class PumaFKine(Node):
 
         self.declare_parameter(
             "controller_topic",
-            "/joint_trajectory_controller/joint_trajectory"
+            "/arm_controller/joint_trajectory"
         )
 
         self.declare_parameter(
@@ -54,7 +54,7 @@ class PumaFKine(Node):
         )
 
         self.declare_parameter("base_frame", "base_link")
-        self.declare_parameter("tcp_frame", "link6")
+        self.declare_parameter("tcp_frame", "puma_tool")
 
         self.target_deg = list(self.get_parameter("target_deg").value)
         self.time_sec = float(self.get_parameter("time_sec").value)

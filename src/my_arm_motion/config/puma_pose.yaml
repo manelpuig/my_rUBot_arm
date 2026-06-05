@@ -1,4 +1,0 @@
-move_to_pose:
-  ros__parameters:
-    target_xyz: [0.4, 0.0, 0.3]
-    target_rpy: [0.0, 3.14159, 0.0]

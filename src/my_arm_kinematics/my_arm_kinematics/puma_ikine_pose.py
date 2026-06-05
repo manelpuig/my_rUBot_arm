@@ -94,7 +94,7 @@ class PumaIKinePose(Node):
         self.declare_parameter("joint_names", ["joint1", "joint2", "joint3", "joint4", "joint5", "joint6"])
 
         self.declare_parameter("base_frame", "base_link")
-        self.declare_parameter("tcp_frame", "link6")
+        self.declare_parameter("tcp_frame", "puma_tool")
 
         self.pub = self.create_publisher(
             JointTrajectory,
