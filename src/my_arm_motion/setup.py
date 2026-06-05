@@ -24,8 +24,7 @@ setup(
     entry_points={
         "console_scripts": [
             "puma_pose_exe = my_arm_motion.puma_pose:main",
-            "move_to_pose = my_arm_motion.move_to_pose:main",
-            "move_to_pose_official = my_arm_motion.move_to_pose_official:main",
+            "puma_pose_sequence_exe = my_arm_motion.puma_pose_sequence:main",
         ],
     },
 )

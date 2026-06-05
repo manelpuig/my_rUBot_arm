@@ -99,11 +99,10 @@ ros2 launch puma_moveit_config move_group.launch.py use_sim_time:=true
 ````
 - Launch puma_pose.py
 ````bash
-ros2 run my_arm_motion puma_pose_exe \
-  --ros-args \
-  -p use_sim_time:=true \
-  -p target_xyz:="[0.45, 0.00, 0.35]" \
-  -p target_rpy:="[0.0, 0.0, 0.0]" \
-  -p seed_from_joint_states:=true \
-  -p execute:=true
+ros2 launch my_arm_motion puma_pose.launch.py use_sim_time:=true target_xyz:="[800, 0, 100]" target_rpy:="[0.0, 90, 0.0]" seed_from_joint_states:=true execute:=true
+````
+- For a sequence:
+````bash
+ros2 launch my_arm_motion puma_pose_sequence.launch.py \
+  sequence_file:=puma_handshake.yaml
 ````

@@ -1,0 +1,46 @@
+common:
+  execute: true
+  group_name: arm
+  ik_link: puma_tool
+  target_frame: base_link
+  planning_frame: base_link
+  ik_timeout_sec: 1.0
+  print_joints: true
+
+steps:
+  - name: home_start
+    target_xyz: [450, 0, 350]
+    target_rpy: [0.0, 0.0, 0.0]
+    seed_from_joint_states: false
+    seed_joints: [0, -40, 70, 0, 40, 0]
+    duration: 4.0
+    sleep_after: 1.0
+
+  - name: approach
+    target_xyz: [420, 100, 350]
+    target_rpy: [0.0, 0.0, 0.0]
+    seed_from_joint_states: true
+    duration: 4.0
+    sleep_after: 1.0
+
+  - name: handshake
+    target_xyz: [420, 150, 350]
+    target_rpy: [0.0, 0.0, 0.0]
+    seed_from_joint_states: true
+    duration: 4.0
+    sleep_after: 1.0
+
+  - name: retreat
+    target_xyz: [420, 100, 350]
+    target_rpy: [0.0, 0.0, 0.0]
+    seed_from_joint_states: true
+    duration: 4.0
+    sleep_after: 1.0
+
+  - name: home_end
+    target_xyz: [450, 0, 350]
+    target_rpy: [0.0, 0.0, 0.0]
+    seed_from_joint_states: false
+    seed_joints: [0, -40, 70, 0, 40, 0]
+    duration: 4.0
+    sleep_after: 1.0
