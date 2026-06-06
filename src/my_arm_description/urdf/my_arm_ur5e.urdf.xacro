@@ -226,6 +226,42 @@
     <dynamics damping="0.8" friction="0.0"/>
   </joint>
 
+  <!-- Tool frame: small sphere 15 cm along -Y from link6 frame -->
+  <link name="ur5e_tool">
+    <visual>
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <geometry>
+        <sphere radius="0.01"/>
+      </geometry>
+      <material name="dark"/>
+    </visual>
+
+    <collision>
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <geometry>
+        <sphere radius="0.01"/>
+      </geometry>
+    </collision>
+
+    <inertial>
+        <mass value="0.01"/>
+        <origin xyz="0 0 0" rpy="0 0 0"/>
+        <inertia
+        ixx="0.000001"
+        ixy="0.0"
+        ixz="0.0"
+        iyy="0.000001"
+        iyz="0.0"
+        izz="0.000001"/>
+    </inertial>
+  </link>
+
+  <joint name="link6_to_ur5e_tool" type="fixed">
+    <parent link="link6"/>
+    <child link="ur5e_tool"/>
+    <origin xyz="0 -0.15 0" rpy="0 0 0"/>
+  </joint>
+
   <!-- 
        ros2_control (gz_ros2_control)
         -->

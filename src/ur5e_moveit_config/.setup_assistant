@@ -1,0 +1,25 @@
+moveit_setup_assistant_config:
+  urdf:
+    package: my_arm_description
+    relative_path: urdf/my_arm_ur5e.urdf.xacro
+  srdf:
+    relative_path: config/my_arm.srdf
+  package_settings:
+    author_name: Manel Puig
+    author_email: manel.puig@ub.edu
+    generated_timestamp: 1780068828
+  control_xacro:
+    command:
+      - position
+    state:
+      - position
+      - velocity
+  modified_urdf:
+    xacros:
+      - control_xacro
+  control_xacro:
+    command:
+      - position
+    state:
+      - position
+      - velocity
