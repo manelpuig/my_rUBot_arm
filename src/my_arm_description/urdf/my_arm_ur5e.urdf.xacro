@@ -87,6 +87,105 @@
     <origin xyz="0 0 0" rpy="0 0 0"/>
   </joint>
 
+    <!-- Reference floor: 1.2 m x 1.2 m centered at base_link -->
+    <link name="reference_floor">
+    <visual>
+        <origin xyz="0 0 -0.005" rpy="0 0 0"/>
+        <geometry>
+        <box size="1.2 1.2 0.01"/>
+        </geometry>
+        <material name="brown">
+        <color rgba="0.45 0.25 0.10 1.0"/>
+        </material>
+    </visual>
+    <collision>
+        <origin xyz="0 0 -0.005" rpy="0 0 0"/>
+        <geometry>
+        <box size="1.2 1.2 0.01"/>
+        </geometry>
+    </collision>
+
+    <inertial>
+        <mass value="0.1"/>
+        <origin xyz="0 0 -0.005" rpy="0 0 0"/>
+        <inertia ixx="0.012" ixy="0" ixz="0"
+                iyy="0.012" iyz="0"
+                izz="0.024"/>
+    </inertial>
+    </link>
+
+    <joint name="world_to_reference_floor" type="fixed">
+    <parent link="world"/>
+    <child link="reference_floor"/>
+    <origin xyz="0 0 0" rpy="0 0 0"/>
+    </joint>
+
+    <!-- X axis: red, 30 cm long, 1 cm thick -->
+    <link name="x_axis_ref">
+    <visual>
+        <origin xyz="0.15 0 0.01" rpy="0 1.57079632679 0"/>
+        <geometry>
+        <cylinder radius="0.005" length="0.30"/>
+        </geometry>
+        <material name="red">
+        <color rgba="1.0 0.0 0.0 1.0"/>
+        </material>
+    </visual>
+    <collision>
+        <origin xyz="0.15 0 0.01" rpy="0 1.57079632679 0"/>
+        <geometry>
+        <cylinder radius="0.005" length="0.30"/>
+        </geometry>
+    </collision>
+
+    <inertial>
+        <mass value="0.01"/>
+        <origin xyz="0.15 0 0.01" rpy="0 1.57079632679 0"/>
+        <inertia ixx="0.000001" ixy="0" ixz="0"
+                iyy="0.000001" iyz="0"
+                izz="0.000001"/>
+    </inertial>
+    </link>
+
+    <joint name="world_to_x_axis_ref" type="fixed">
+    <parent link="world"/>
+    <child link="x_axis_ref"/>
+    <origin xyz="0 0 0" rpy="0 0 0"/>
+    </joint>
+
+    <!-- Y axis: green, 30 cm long, 1 cm thick -->
+    <link name="y_axis_ref">
+    <visual>
+        <origin xyz="0 0.15 0.015" rpy="1.57079632679 0 0"/>
+        <geometry>
+        <cylinder radius="0.005" length="0.30"/>
+        </geometry>
+        <material name="green">
+        <color rgba="0.0 0.8 0.0 1.0"/>
+        </material>
+    </visual>
+    <collision>
+        <origin xyz="0 0.15 0.015" rpy="1.57079632679 0 0"/>
+        <geometry>
+        <cylinder radius="0.005" length="0.30"/>
+        </geometry>
+    </collision>
+
+    <inertial>
+        <mass value="0.01"/>
+        <origin xyz="0 0.15 0.015" rpy="1.57079632679 0 0"/>
+        <inertia ixx="0.000001" ixy="0" ixz="0"
+                iyy="0.000001" iyz="0"
+                izz="0.000001"/>
+    </inertial>
+    </link>
+
+    <joint name="world_to_y_axis_ref" type="fixed">
+    <parent link="world"/>
+    <child link="y_axis_ref"/>
+    <origin xyz="0 0 0" rpy="0 0 0"/>
+    </joint>
+
   <link name="base_link">
     <visual>
       <origin xyz="0 0 ${$(arg base_z)/2.0}" rpy="0 0 0"/>
