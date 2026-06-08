@@ -268,7 +268,8 @@ class ArmMoveToPoseViaIK(Node):
         if self.print_joints:
             self.get_logger().info("IK joint goal:")
             for n, v in zip(ARM_JOINTS, joint_goal):
-                self.get_logger().info(f"  {n}: {v:.4f} rad")
+                v_deg = math.degrees(v)
+                self.get_logger().info(f"  {n}: {v_deg:.4f} deg ({v:.4f} rad)")
 
         if not self.execute_motion:
             self.get_logger().info("execute:=false -> exiting without motion.")

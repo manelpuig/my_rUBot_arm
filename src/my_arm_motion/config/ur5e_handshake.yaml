@@ -13,53 +13,38 @@ common:
 steps:
 
   - name: home_start
-
-    target_xyz: [140, -850, 400]
-    target_rpy: [0.0, 50.0, -90.0]
-
+    target_xyz: [0, -400, 500]
+    target_rpy: [90.0, 0.0, 0.0]
     seed_from_joint_states: false
-    seed_joints: [-90, -40, 30, 0, 0, 0]
-
+    seed_joints: [-60, -60, -100, 170, -90, 0]
     duration: 4.0
     sleep_after: 1.0
 
   - name: approach_handshake
-
-    target_xyz: [140, -800, 300]
-    target_rpy: [0.0, 70.0, -90.0]
-
+    target_xyz: [-250, -350, 300]
+    target_rpy: [90.0, 0.0, 0.0]
     seed_from_joint_states: true
-
-    duration: 2.0
+    duration: 4.0
     sleep_after: 1.0
 
   - name: handshake
-
-    target_xyz: [140, -850, 200]
-    target_rpy: [0.0, 90.0, -90.0]
-
+    target_xyz: [-250, -350, 200]
+    target_rpy: [90.0, 0.0, 0.0]
     seed_from_joint_states: true
-
     duration: 1.0
     sleep_after: 1.0
 
   - name: retreat_handshake
-
-    target_xyz: [140, -800, 300]
-    target_rpy: [0.0, 70.0, -90.0]
-
+    target_xyz: [-250, -350, 300]
+    target_rpy: [90.0, 0.0, 0.0]
     seed_from_joint_states: true
-
-    duration: 1.0
+    duration: 1.0 
     sleep_after: 1.0
 
   - name: home_end
-
-    target_xyz: [140, -850, 400]
-    target_rpy: [0.0, 70.0, -90.0]
-
+    target_xyz: [0, -400, 500]
+    target_rpy: [90.0, 0.0, 0.0]
     seed_from_joint_states: false
-    seed_joints: [-90, -40, 30, 0, 0, 0]
-
-    duration: 2.0
+    seed_joints: [-60, -60, -100, 170, -90, 0]
+    duration: 4.0
     sleep_after: 1.0
