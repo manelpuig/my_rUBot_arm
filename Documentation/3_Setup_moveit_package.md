@@ -92,14 +92,17 @@ Having done the proper modifications to your MoveIt2 package, you are now ready 
 - Bringup
 ````bash
 ros2 launch my_arm_gazebo my_arm_gazebo.launch.py use_sim_time:=true model:=my_arm_puma.urdf.xacro
+ros2 launch my_arm_gazebo my_arm_gazebo.launch.py use_sim_time:=true model:=my_arm_ur5e.urdf.xacro
 ````
 - Launch moveit2
 ````bash
 ros2 launch puma_moveit_config move_group.launch.py use_sim_time:=true
+ros2 launch ur5e_moveit_config move_group_rviz.launch.py use_sim_time:=true
 ````
 - Launch puma_pose.py
 ````bash
-ros2 launch my_arm_motion puma_pose.launch.py use_sim_time:=true target_xyz:="[800, 0, 100]" target_rpy:="[0.0, 90, 0.0]" seed_from_joint_states:=true execute:=true
+ros2 launch my_arm_motion arm_pose.launch.py use_sim_time:=true target_xyz:="[800, 0, 100]" target_rpy:="[0.0, 90, 0.0]" seed_from_joint_states:=true execute:=true
+ros2 launch my_arm_motion arm_pose.launch.py use_sim_time:=true target_xyz:="[0, -600, 600]" target_rpy:="[0.0, 90, 0.0]" seed_from_joint_states:=false seed_joints:="[-90,-90,-90,0,90,0]" execute:=true
 ````
 - For a sequence:
 ````bash

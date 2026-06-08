@@ -8,7 +8,7 @@ def generate_launch_description():
 
     target_xyz = DeclareLaunchArgument(
         "target_xyz",
-        default_value="[400.0, 0.0, 500.0]",
+        default_value="[0.0, -400.0, 300.0]",
         description="Target position [mm] as [x,y,z]",
     )
 
@@ -20,7 +20,7 @@ def generate_launch_description():
 
     target_rpy = DeclareLaunchArgument(
         "target_rpy",
-        default_value="[0.0, 180.0, 0.0]",
+        default_value="[0.0, 90.0, 0.0]",
         description="Target orientation [deg] as [roll,pitch,yaw]",
     )
 
@@ -32,7 +32,7 @@ def generate_launch_description():
 
     seed_joints = DeclareLaunchArgument(
         "seed_joints",
-        default_value="[0.0, -40.0, 70.0, 0.0, 40.0, 0.0]",
+        default_value="[-9.0, -90.0, -90.0, 0.0, 90.0, 0.0]",
         description="Fallback IK seed joints [deg]",
     )
 
@@ -54,14 +54,14 @@ def generate_launch_description():
     ik_timeout_sec = DeclareLaunchArgument("ik_timeout_sec", default_value="0.5")
     print_joints = DeclareLaunchArgument("print_joints", default_value="true")
 
-    puma_pose_node = Node(
+    arm_pose_node = Node(
         package="my_arm_motion",
-        executable="puma_pose_exe",
-        name="puma_move_to_pose",
+        executable="arm_pose_exe",
+        name="arm_move_to_pose",
         output="screen",
         parameters=[{
             "group_name": "arm",
-            "ik_link": "puma_tool",
+            "ik_link": "tool",
 
             "target_frame": "base_link",
             "planning_frame": "base_link",
@@ -92,5 +92,5 @@ def generate_launch_description():
         max_acceleration,
         ik_timeout_sec,
         print_joints,
-        puma_pose_node,
+        arm_pose_node,
     ])

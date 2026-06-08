@@ -253,7 +253,7 @@
     <xacro:property name="tool_z" value="$(arg tool_z)"/>
     <xacro:property name="tool_radius" value="$(arg tool_radius)"/>
 
-    <link name="puma_tool">
+    <link name="tool">
     <visual>
         <origin xyz="0 0 0" rpy="0 0 0"/>
         <geometry>
@@ -272,9 +272,9 @@
     <xacro:inertial_sphere mass="0.001" radius="${tool_radius}"/>
     </link>
 
-    <joint name="link6_to_puma_tool" type="fixed">
+    <joint name="link6_to_tool" type="fixed">
     <parent link="link6"/>
-    <child link="puma_tool"/>
+    <child link="tool"/>
     <origin xyz="0 0 ${tool_z}" rpy="0 0 0"/>
     </joint>
     

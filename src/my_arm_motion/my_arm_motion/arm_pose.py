@@ -16,7 +16,7 @@ import tf2_geometry_msgs
 from pymoveit2 import MoveIt2
 
 
-PUMA_JOINTS = [
+ARM_JOINTS = [
     "joint1",
     "joint2",
     "joint3",
@@ -42,10 +42,10 @@ def quat_from_rpy_zyx(roll: float, pitch: float, yaw: float):
     return float(qx), float(qy), float(qz), float(qw)
 
 
-class PumaMoveToPoseViaIK(Node):
+class ArmMoveToPoseViaIK(Node):
 
     def __init__(self):
-        super().__init__("puma_move_to_pose")
+        super().__init__("arm_move_to_pose")
 
         self.declare_parameter("startup_delay_sec", 3.0)
 
@@ -56,7 +56,7 @@ class PumaMoveToPoseViaIK(Node):
         self.declare_parameter("planning_frame", "base_link")
 
         self.declare_parameter("group_name", "arm")
-        self.declare_parameter("ik_link", "puma_tool")
+        self.declare_parameter("ik_link", "tool")
 
         self.declare_parameter(
             "seed_joints",
@@ -113,7 +113,7 @@ class PumaMoveToPoseViaIK(Node):
 
         self.moveit2 = MoveIt2(
             node=self,
-            joint_names=PUMA_JOINTS,
+            joint_names=ARM_JOINTS,
             base_link_name=self.planning_frame,
             end_effector_name=self.ik_link,
             group_name=self.group_name,
@@ -219,12 +219,12 @@ class PumaMoveToPoseViaIK(Node):
 
         if self.seed_from_joint_states and self._last_js is not None:
             name_to_pos = dict(zip(self._last_js.name, self._last_js.position))
-            if all(j in name_to_pos for j in PUMA_JOINTS):
-                seed_positions = [float(name_to_pos[j]) for j in PUMA_JOINTS]
+            if all(j in name_to_pos for j in ARM_JOINTS):
+                seed_positions = [float(name_to_pos[j]) for j in ARM_JOINTS]
                 self.get_logger().info("Using /joint_states as IK seed.")
             else:
                 self.get_logger().warn(
-                    "/joint_states received but does not contain all PUMA joints. "
+                    "/joint_states received but does not contain all ARM joints. "
                     "Falling back to seed_joints."
                 )
         else:
@@ -234,7 +234,7 @@ class PumaMoveToPoseViaIK(Node):
 
         seed = JointState()
         seed.header = pose_base.header
-        seed.name = PUMA_JOINTS
+        seed.name = ARM_JOINTS
         seed.position = seed_positions
 
         req.ik_request.robot_state.joint_state = seed
@@ -259,7 +259,7 @@ class PumaMoveToPoseViaIK(Node):
         name_to_pos = dict(zip(sol.name, sol.position))
 
         try:
-            joint_goal = [float(name_to_pos[j]) for j in PUMA_JOINTS]
+            joint_goal = [float(name_to_pos[j]) for j in ARM_JOINTS]
         except KeyError as e:
             self.get_logger().error(f"IK solution missing expected joint: {e}")
             rclpy.shutdown()
@@ -267,7 +267,7 @@ class PumaMoveToPoseViaIK(Node):
 
         if self.print_joints:
             self.get_logger().info("IK joint goal:")
-            for n, v in zip(PUMA_JOINTS, joint_goal):
+            for n, v in zip(ARM_JOINTS, joint_goal):
                 self.get_logger().info(f"  {n}: {v:.4f} rad")
 
         if not self.execute_motion:
@@ -285,7 +285,7 @@ class PumaMoveToPoseViaIK(Node):
 
 def main():
     rclpy.init()
-    node = PumaMoveToPoseViaIK()
+    node = ArmMoveToPoseViaIK()
     rclpy.spin(node)
 
 
