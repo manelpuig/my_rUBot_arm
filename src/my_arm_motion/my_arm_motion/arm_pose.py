@@ -287,7 +287,17 @@ class ArmMoveToPoseViaIK(Node):
 def main():
     rclpy.init()
     node = ArmMoveToPoseViaIK()
-    rclpy.spin(node)
+    try:
+        rclpy.spin(node)
+
+    except KeyboardInterrupt:
+        node.get_logger().info("Ctrl+C received. Shutting down...")
+
+    finally:
+        if rclpy.ok():
+            node.destroy_node()
+            if rclpy.ok():
+                rclpy.shutdown()
 
 
 if __name__ == "__main__":

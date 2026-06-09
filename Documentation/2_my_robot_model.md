@@ -70,7 +70,7 @@ This node receives a desired **tool pose** (position + orientation) expressed in
 
 - Launch the simulation environment
 ````shell
-ros2 launch my_arm_gz gz_sim.launch.py use_sim_time:=true model:=my_arm_puma.urdf.xacro
+ros2 launch my_arm_gazebo my_arm_gazebo.launch.py use_sim_time:=true model:=my_arm_puma.urdf.xacro
 ````
 - Launch the `send_pose_trajectory` node:
 ````shell
