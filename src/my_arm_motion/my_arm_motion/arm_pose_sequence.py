@@ -119,6 +119,7 @@ class ArmPoseSequenceSimple(Node):
 
         self.step_index = 0
         self.waiting = False
+        self.finished = False
 
         self.get_logger().info(f"Loaded sequence file: {self.sequence_file}")
         self.get_logger().info(f"Number of steps: {len(self.steps)}")
@@ -127,7 +128,7 @@ class ArmPoseSequenceSimple(Node):
         self.get_logger().info(f"Planning frame: {self.planning_frame}")
         self.get_logger().info(f"IK link: {self.ik_link}")
 
-        self.create_timer(0.5, self._timer_cb)
+        self.timer = self.create_timer(0.5, self._timer_cb)
 
     def _js_cb(self, msg):
         self._last_js = msg
@@ -138,7 +139,8 @@ class ArmPoseSequenceSimple(Node):
 
         if self.step_index >= len(self.steps):
             self.get_logger().info("Sequence finished.")
-            rclpy.shutdown()
+            self.timer.cancel()
+            self.finished = True
             return
 
         if not self.ik_client.service_is_ready():
@@ -374,24 +376,24 @@ class ArmPoseSequenceSimple(Node):
         self.step_index += 1
         self.waiting = False
 
-
 def main():
     rclpy.init()
 
     node = ArmPoseSequenceSimple()
 
     try:
-        rclpy.spin(node)
+        while rclpy.ok() and not node.finished:
+            rclpy.spin_once(node, timeout_sec=0.1)
 
     except KeyboardInterrupt:
-        node.get_logger().info("Ctrl+C received. Shutting down...")
+        if rclpy.ok():
+            node.get_logger().info("Ctrl+C received. Shutting down...")
 
     finally:
         node.destroy_node()
 
         if rclpy.ok():
             rclpy.shutdown()
-
 
 if __name__ == "__main__":
     main()

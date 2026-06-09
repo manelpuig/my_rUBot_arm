@@ -30,5 +30,8 @@ ros2 launch my_arm_motion arm_pose.launch.py use_sim_time:=true target_xyz:="[0,
 ros2 launch my_arm_motion arm_pose_sequence.launch.py sequence_file:=puma_handshake.yaml
 ````
 - or for ur5e
+````bash
 ros2 launch my_arm_motion arm_pose_sequence.launch.py sequence_file:=ur5e_handshake.yaml
 ````
+![ur5e_moveit](./Images/ur5e_pose_sequence_moveit.png)
+![ur5e_gazebo](./Images/ur5e_pose_sequence_gazebo.png)
