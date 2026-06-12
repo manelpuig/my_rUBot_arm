@@ -330,79 +330,19 @@ Arduino Nano ESP32
 
 # Compatibility with Existing Packages
 
-The driver is compatible with any node that publishes:
-
-```text
-/arm_controller/joint_trajectory
-```
-
-including:
-
-## my_arm_kinematics
-
-* puma_fkine.py
-* puma_ikine_position.py
-* ur5e_fkine.py
-* ur5e_ikine_position.py
-* trajectory generators
-
-## my_arm_motion
-
-* move_to_pose.py
-* move_to_configuration.py
-* arm_pose_sequence.py
-* send_pose_trajectory.py
-
-## MoveIt2
-
-Any MoveIt2 planning pipeline publishing standard trajectories.
-
----
-
-# Future Improvements
-
-## Trajectory Execution
-
-Current implementation:
-
-```python
-point = msg.points[-1]
-```
-
-Only the final point is executed.
-
-Future implementation:
-
-```python
-for point in msg.points:
-```
-
-Execute every trajectory point using:
-
-```python
-point.time_from_start
-```
-
-This would allow smoother motions and better compatibility with MoveIt2 trajectory planning.
-
----
-
-# Educational Value
-
-This architecture reproduces the same software layers found in industrial robot systems:
-
-```text
-Application Layer
-     ↓
-Motion Planning
-     ↓
-ROS Driver
-     ↓
-Hardware Interface
-     ↓
-Robot Controller
-     ↓
-Actuators
-```
-
-allowing students to learn ROS 2, robot kinematics, trajectory generation, and hardware integration using a low-cost educational robot arm.
+- Launch the driver
+````bash
+ros2 launch my_arm_driver serial_bridge.launch.py serial_port:=/dev/ttyACM0
+````
+- Send a save target
+````bash
+ros2 run my_arm_driver send_joint_target_node \
+  --ros-args \
+  -p target_joints_deg:="[0, 0, 0, 0, 0, 0]"
+````
+- Send another target
+````bash
+ros2 run my_arm_driver send_joint_target_node \
+  --ros-args \
+  -p target_joints_deg:="[10, 0, 0, 0, 0, 0]"
+````
