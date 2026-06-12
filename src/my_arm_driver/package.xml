@@ -2,16 +2,20 @@
 <package format="3">
   <name>my_arm_driver</name>
   <version>0.0.1</version>
-  <description>Driver per al braç robot d'Amazon usant comunicació sèrie</description>
-  <maintainer email="manel.puig@ub.edu">Manel Puig</maintainer>
+  <description>ROS 2 serial driver for a servo-based educational robot arm</description>
+
+  <maintainer email="puigmanel@gmail.com">Manel Puig</maintainer>
   <license>MIT</license>
 
-  <depend>rclpy</depend>
-  <depend>std_msgs</depend>
+  <buildtool_depend>ament_python</buildtool_depend>
+
+  <exec_depend>rclpy</exec_depend>
+  <exec_depend>trajectory_msgs</exec_depend>
+  <exec_depend>python3-serial</exec_depend>
 
   <test_depend>ament_copyright</test_depend>
   <test_depend>ament_flake8</test_depend>
-  <test_depend>ament_pep8</test_depend>
+  <test_depend>ament_pep257</test_depend>
   <test_depend>python3-pytest</test_depend>
 
   <export>

@@ -7,10 +7,10 @@ from trajectory_msgs.msg import JointTrajectory
 import serial
 
 
-class SerialTrajectoryBridgeNode(Node):
+class SerialBridgeNode(Node):
 
     def __init__(self):
-        super().__init__("serial_trajectory_bridge_node")
+        super().__init__("serial_bridge_node")
 
         self.declare_parameter("serial_port", "/dev/ttyUSB0")
         self.declare_parameter("baudrate", 115200)
@@ -75,7 +75,7 @@ class SerialTrajectoryBridgeNode(Node):
 
 def main(args=None):
     rclpy.init(args=args)
-    node = SerialTrajectoryBridgeNode()
+    node = SerialBridgeNode()
 
     try:
         rclpy.spin(node)
