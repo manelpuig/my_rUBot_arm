@@ -328,7 +328,7 @@ Arduino Nano ESP32
 
 ---
 
-# Compatibility with Existing Packages
+# Test driver with send_joint_target node
 
 - Launch the driver
 ````bash
