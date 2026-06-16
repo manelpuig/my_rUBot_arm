@@ -346,3 +346,13 @@ ros2 run my_arm_driver send_joint_target_node \
   --ros-args \
   -p target_joints_deg:="[10, 0, 0, 0, 0, 0]"
 ````
+# Test driver with send_joint_trajectory node
+
+- Launch the driver
+````bash
+ros2 launch my_arm_driver serial_trajectory_bridge.launch.py serial_port:=/dev/ttyACM0
+````
+- Send a save target
+````bash
+ros2 run my_arm_driver send_joint_trajectory_node
+````

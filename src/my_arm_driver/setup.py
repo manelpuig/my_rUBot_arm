@@ -26,6 +26,7 @@ setup(
             "serial_trajectory_bridge_node = my_arm_driver.serial_trajectory_bridge_node:main",
             "test_joint_trajectory_node = my_arm_driver.test_joint_trajectory_node:main",
             "send_joint_target_node = my_arm_driver.send_joint_target_node:main",
+            'send_joint_trajectory_node = my_arm_driver.send_joint_trajectory_node:main',
         ],
     },
 )
