@@ -2,6 +2,8 @@
 <robot xmlns:xacro="http://ros.org/wiki/xacro" name="my_arm_mecanum">
 
   <xacro:arg name="ros2_control_params" default=""/>
+  <xacro:arg name="hardware_plugin" default="fake_components/GenericSystem"/>
+  <xacro:arg name="use_gazebo_plugin" default="false"/>
 
   <!-- Approximate SG90 wooden arm dimensions -->
   <xacro:arg name="base_z" default="0.030"/>
@@ -178,6 +180,23 @@
     <xacro:inertial_box mass="0.01" x="0.050" y="0.008" z="0.012"/>
   </link>
 
+  <link name="link6_right">
+    <visual>
+        <origin xyz="0.025 0 0" rpy="0 0 0"/>
+        <geometry>
+        <box size="0.050 0.008 0.012"/>
+        </geometry>
+        <material name="red"/>
+    </visual>
+    <collision>
+        <origin xyz="0.025 0 0" rpy="0 0 0"/>
+        <geometry>
+        <box size="0.050 0.008 0.012"/>
+        </geometry>
+    </collision>
+    <xacro:inertial_box mass="0.01" x="0.050" y="0.008" z="0.012"/>
+  </link>
+
   <!-- Tool frame -->
   <link name="tool">
     <visual>
@@ -187,6 +206,11 @@
       </geometry>
       <material name="dark"/>
     </visual>
+    <collision>
+        <geometry>
+            <sphere radius="0.008"/>
+        </geometry>
+    </collision>
   </link>
 
   <!-- =========================
@@ -239,12 +263,17 @@
   </joint>
 
   <!-- joint6: gripper open-close, kept revolute to match SG90 servo command -->
-  <joint name="joint6" type="revolute">
+  <joint name="joint6" type="prismatic">
     <parent link="link5"/>
     <child link="link6"/>
-    <origin xyz="0.030 0 0" rpy="0 0 0"/>
-    <axis xyz="0 0 1"/>
-    <limit lower="0.0" upper="1.5708" effort="1.0" velocity="1.0"/>
+    <origin xyz="0.030 0.010 0" rpy="0 0 0"/>
+    <axis xyz="0 1 0"/>
+    <limit lower="0.0" upper="0.015" effort="1.0" velocity="0.05"/>
+  </joint>
+  <joint name="joint6_right" type="fixed">
+    <parent link="link5"/>
+    <child link="link6_right"/>
+    <origin xyz="0.030 -0.010 0" rpy="0 0 0"/>
   </joint>
 
   <joint name="link5_to_tool" type="fixed">
@@ -259,7 +288,7 @@
 
   <ros2_control name="MyArmMecanumSystem" type="system">
     <hardware>
-      <plugin>ign_ros2_control/IgnitionSystem</plugin>
+      <plugin>$(arg hardware_plugin)</plugin>
     </hardware>
 
     <joint name="joint1">
@@ -299,11 +328,13 @@
     </joint>
   </ros2_control>
 
-  <gazebo>
-    <plugin name="ign_ros2_control::IgnitionROS2ControlPlugin"
-            filename="libign_ros2_control-system.so">
-      <parameters>$(arg ros2_control_params)</parameters>
-    </plugin>
-  </gazebo>
+  <xacro:if value="$(arg use_gazebo_plugin)">
+    <gazebo>
+        <plugin name="ign_ros2_control::IgnitionROS2ControlPlugin"
+                filename="libign_ros2_control-system.so">
+        <parameters>$(arg ros2_control_params)</parameters>
+        </plugin>
+    </gazebo>
+  </xacro:if>
 
 </robot>

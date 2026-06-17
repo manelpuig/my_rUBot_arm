@@ -1,20 +1,10 @@
 from launch import LaunchDescription
-from launch.actions import DeclareLaunchArgument
-from launch.substitutions import LaunchConfiguration
 from launch_ros.actions import Node
 
 from moveit_configs_utils import MoveItConfigsBuilder
 
 
 def generate_launch_description():
-
-    use_sim_time = LaunchConfiguration("use_sim_time")
-
-    declare_use_sim_time = DeclareLaunchArgument(
-        "use_sim_time",
-        default_value="true",
-        description="Use simulation time",
-    )
 
     moveit_config = (
         MoveItConfigsBuilder("my_arm", package_name="mecanum_moveit_config")
@@ -25,17 +15,24 @@ def generate_launch_description():
         .to_moveit_configs()
     )
 
-    move_group_node = Node(
-        package="moveit_ros_move_group",
-        executable="move_group",
-        output="screen",
+    rviz_node = Node(
+        package="rviz2",
+        executable="rviz2",
+        name="rviz2",
+        output="log",
+        arguments=[
+            "-d",
+            str(moveit_config.package_path / "config/moveit.rviz"),
+        ],
         parameters=[
-            moveit_config.to_dict(),
-            {"use_sim_time": use_sim_time},
+            moveit_config.robot_description,
+            moveit_config.robot_description_semantic,
+            moveit_config.robot_description_kinematics,
+            moveit_config.planning_pipelines,
+            moveit_config.trajectory_execution,
         ],
     )
 
     return LaunchDescription([
-        declare_use_sim_time,
-        move_group_node,
+        rviz_node,
     ])
