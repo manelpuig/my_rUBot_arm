@@ -330,8 +330,8 @@
 
   <xacro:if value="$(arg use_gazebo_plugin)">
     <gazebo>
-        <plugin name="ign_ros2_control::IgnitionROS2ControlPlugin"
-                filename="libign_ros2_control-system.so">
+        <plugin name="gz_ros2_control::GazeboSimROS2ControlPlugin"
+                filename="gz_ros2_control-system">
         <parameters>$(arg ros2_control_params)</parameters>
         </plugin>
     </gazebo>

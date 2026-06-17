@@ -283,7 +283,7 @@
        ========================= -->
   <ros2_control name="MyArmSystem" type="system">
     <hardware>
-      <plugin>ign_ros2_control/IgnitionSystem</plugin>
+      <plugin>gz_ros2_control/GazeboSimSystem</plugin>
     </hardware>
 
     <joint name="joint1">
@@ -319,9 +319,9 @@
   </ros2_control>
 
   <gazebo>
-    <plugin name="ign_ros2_control::IgnitionROS2ControlPlugin"
-            filename="libign_ros2_control-system.so">
-      <parameters>$(arg ros2_control_params)</parameters>
+    <plugin name="gz_ros2_control::GazeboSimROS2ControlPlugin"
+            filename="gz_ros2_control-system">
+        <parameters>$(arg ros2_control_params)</parameters>
     </plugin>
   </gazebo>
 
