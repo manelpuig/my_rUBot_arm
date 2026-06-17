@@ -19,7 +19,7 @@ setup(
     maintainer_email="puigmanel@gmail.com",
     description="ROS 2 serial driver for a servo-based educational robot arm",
     license="MIT",
-    tests_require=["pytest"],
+    #tests_require=["pytest"],
     entry_points={
         "console_scripts": [
             "serial_bridge_node = my_arm_driver.serial_bridge_node:main",
