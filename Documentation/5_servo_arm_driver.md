@@ -1,119 +1,49 @@
-# ROS 2 Driver for a 6-DOF Servo Robot Arm using Arduino Nano ESP32
+# ROS 2 Driver for the 6-DOF Mecanum Robot Arm
 
 ## Overview
 
-This driver allows a 6-DOF educational robotic arm built with SG90 servos and an Arduino Nano ESP32 to be controlled from ROS 2 Humble using the standard ROS trajectory interface.
+This package provides a ROS 2 driver for the 6-DOF servo arm mounted on the rUBot mecanum platform.
 
-The architecture follows the same philosophy used by industrial robot drivers:
+The arm is driven by six SG90 servos controlled by an Arduino Nano ESP32.
+
+The driver implements a standard ROS trajectory interface, allowing the arm to be controlled by motion nodes, kinematics nodes, or MoveIt2.
 
 ```text
-MoveIt2 / Kinematics Nodes
-            │
-            ▼
+Motion Nodes
+     │
+     ▼
 /arm_controller/joint_trajectory
-            │
-            ▼
+     │
+     ▼
 serial_trajectory_bridge_node
-            │ USB Serial
-            ▼
+     │
+ USB Serial
+     ▼
 Arduino Nano ESP32
-            │
-            ▼
-SG90 Servos
+     │
+     ▼
+6 SG90 Servos
 ```
 
-The objective is to make the educational arm compatible with the same ROS 2 nodes already developed for industrial robots such as the UR5e and the PUMA manipulator.
+The driver also publishes:
+
+```text
+/joint_states
+```
+
+so that RViz and robot_state_publisher can display the current arm configuration.
 
 ---
 
-# System Architecture
+# Driver Node
 
-The system is divided into three layers:
-
-## Layer 1: Motion Planning
-
-This layer generates robot motions.
-
-Examples:
-
-* Forward Kinematics (FK)
-* Inverse Kinematics (IK)
-* MoveIt2 motion planning
-* Cartesian trajectories
-* Joint trajectories
-
-Nodes from:
-
-```text
-my_arm_kinematics
-my_arm_motion
-```
-
-publish standard ROS trajectories to:
-
-```text
-/arm_controller/joint_trajectory
-```
-
----
-
-## Layer 2: ROS 2 Driver
-
-The driver subscribes to:
-
-```text
-/arm_controller/joint_trajectory
-```
-
-and converts ROS joint positions into servo angles.
-
-The driver acts as a simplified hardware interface.
-
-### Input
-
-```text
-trajectory_msgs/JointTrajectory
-```
-
-### Output
-
-```text
-90,120,45,90,90,90
-```
-
-sent through the serial port.
-
----
-
-## Layer 3: Arduino Controller
-
-The Arduino receives six servo angles and updates the servos.
-
-Example received message:
-
-```text
-90,120,45,90,90,90
-```
-
-The Arduino parses the six values and executes:
-
-```cpp
-servo.write(angle);
-```
-
-for each servo.
-
----
-
-# ROS Driver Node
-
-## Node Name
+Node:
 
 ```text
 serial_trajectory_bridge_node
 ```
 
-## Subscription
+### Subscription
 
 ```text
 /arm_controller/joint_trajectory
@@ -121,238 +51,260 @@ serial_trajectory_bridge_node
 
 Type:
 
-```cpp
+```text
 trajectory_msgs/msg/JointTrajectory
 ```
 
----
-
-## Processing Pipeline
-
-### Step 1
-
-Receive a trajectory:
+### Publication
 
 ```text
-JointTrajectory
- ├── joint_names
- └── points[]
+/joint_states
 ```
 
----
-
-### Step 2
-
-Extract target positions:
-
-```python
-point = msg.points[-1]
-```
-
-The last point corresponds to the final target configuration.
-
----
-
-### Step 3
-
-Convert radians to degrees:
-
-```python
-joint_deg = math.degrees(joint_rad)
-```
-
----
-
-### Step 4
-
-Apply servo calibration:
-
-```python
-servo_deg =
-offset[i] + sign[i] * joint_deg
-```
-
-Example:
-
-```python
-offset = [90,90,90,90,90,90]
-
-sign = [1,-1,1,1,-1,1]
-```
-
-This allows each servo to have its own:
-
-* mechanical zero
-* rotation direction
-
----
-
-### Step 5
-
-Limit output range:
-
-```python
-servo_deg = max(0,min(180,servo_deg))
-```
-
----
-
-### Step 6
-
-Send serial message:
-
-```python
-90,120,45,90,90,90\n
-```
-
----
-
-# Arduino Firmware
-
-## Responsibilities
-
-The Arduino acts only as a servo controller.
-
-It does not perform:
-
-* kinematics
-* inverse kinematics
-* trajectory generation
-* motion planning
-
-Those tasks remain inside ROS 2.
-
----
-
-## Arduino Program
-
-The firmware:
-
-1. Receives serial data.
-2. Parses six comma-separated values.
-3. Updates each servo position.
-
-Example:
-
-```cpp
-servo.write(angle);
-```
-
----
-
-# Using the Driver with FK Nodes
-
-A simple example is:
+Type:
 
 ```text
-puma_fkine.py
+sensor_msgs/msg/JointState
 ```
-
-The node publishes a target joint configuration.
-
-Example:
-
-```python
-target_joints_deg =
-[
-    0.0,
-    -45.0,
-    90.0,
-    0.0,
-    45.0,
-    0.0
-]
-```
-
-The node converts degrees to radians and publishes:
-
-```text
-/arm_controller/joint_trajectory
-```
-
-The driver receives:
-
-```text
-JointTrajectory
-```
-
-and converts it into:
-
-```text
-90,45,180,90,135,90
-```
-
-which is sent to the Arduino.
 
 ---
 
-# Example Launch Sequence
+# Driver Operation
 
-## Terminal 1
+The driver:
 
-Start the ROS driver:
+1. Receives a JointTrajectory message.
+2. Executes each trajectory point sequentially.
+3. Converts joint positions from radians to servo angles.
+4. Applies servo offsets and sign corrections.
+5. Sends six angles through the serial port.
+6. Updates and publishes `/joint_states`.
+
+Example serial command:
+
+```text
+90,120,45,90,90,90
+```
+
+---
+
+# Launch Driver
 
 ```bash
-ros2 run my_arm_driver serial_trajectory_bridge_node
+ros2 launch my_arm_driver serial_trajectory_bridge.launch.py \
+    serial_port:=/dev/ttyUSB0
 ```
 
----
-
-## Terminal 2
-
-Run FK example:
-
-```bash
-ros2 launch my_arm_kinematics puma_fkine.launch.py
-```
-
----
-
-Expected result:
+Expected output:
 
 ```text
-puma_fkine
-        │
-        ▼
-/arm_controller/joint_trajectory
-        │
-        ▼
-serial_trajectory_bridge_node
-        │
-        ▼
-Arduino Nano ESP32
-        │
-        ▼
-6 SG90 Servos
+Serial trajectory bridge started on /dev/ttyUSB0 at 115200 baud
 ```
 
 ---
 
-# Test driver with send_joint_target node
+# Test 1: Verify Joint States
 
-- Launch the driver
-````bash
-ros2 launch my_arm_driver serial_bridge.launch.py serial_port:=/dev/ttyACM0
-````
-- Send a save target
-````bash
-ros2 run my_arm_driver send_joint_target_node \
-  --ros-args \
-  -p target_joints_deg:="[0, 0, 0, 0, 0, 0]"
-````
-- Send another target
-````bash
-ros2 run my_arm_driver send_joint_target_node \
-  --ros-args \
-  -p target_joints_deg:="[10, 0, 0, 0, 0, 0]"
-````
-# Test driver with send_joint_trajectory node
+Launch the driver:
 
-- Launch the driver
-````bash
-ros2 launch my_arm_driver serial_trajectory_bridge.launch.py serial_port:=/dev/ttyACM0
-````
-- Send a save target
-````bash
+```bash
+ros2 launch my_arm_driver serial_trajectory_bridge.launch.py
+```
+
+In another terminal:
+
+```bash
+ros2 topic echo /joint_states
+```
+
+Expected:
+
+```yaml
+name:
+- arm_joint1
+- arm_joint2
+- arm_joint3
+- arm_joint4
+- arm_joint5
+- arm_joint6
+
+position:
+- 0.0
+- 0.0
+- 0.0
+- 0.0
+- 0.0
+- 0.0
+```
+
+---
+
+# Test 2: Single Target
+
+Launch the driver:
+
+```bash
+ros2 launch my_arm_driver serial_trajectory_bridge.launch.py
+```
+
+Send a target:
+
+```bash
+ros2 run my_arm_driver send_joint_target_node \
+--ros-args \
+-p target_joints_deg:="[0,0,0,0,0,0]"
+```
+
+Example:
+
+```bash
+ros2 run my_arm_driver send_joint_target_node \
+--ros-args \
+-p target_joints_deg:="[20,-30,40,0,0,0]"
+```
+
+Expected:
+
+* Driver receives one trajectory point.
+* Servos move to the target position.
+* `/joint_states` is updated.
+
+Driver output:
+
+```text
+Executing trajectory with 1 points
+t=2.00s | Servo angles [deg]: [...]
+Trajectory execution finished
+```
+
+---
+
+# Test 3: Multi-Point Trajectory
+
+Launch the driver:
+
+```bash
+ros2 launch my_arm_driver serial_trajectory_bridge.launch.py
+```
+
+Run:
+
+```bash
 ros2 run my_arm_driver send_joint_trajectory_node
-````
+```
+
+Expected:
+
+* Several trajectory points are received.
+* The arm moves smoothly through intermediate positions.
+* `/joint_states` follows the trajectory.
+
+Driver output:
+
+```text
+Executing trajectory with 5 points
+t=1.00s ...
+t=2.00s ...
+t=3.00s ...
+Trajectory execution finished
+```
+
+---
+
+# Test 4: Verify Joint Trajectory Topic
+
+Open:
+
+```bash
+ros2 topic echo /arm_controller/joint_trajectory
+```
+
+Send a target:
+
+```bash
+ros2 run my_arm_driver send_joint_target_node
+```
+
+Expected:
+
+```yaml
+joint_names:
+- arm_joint1
+- arm_joint2
+- arm_joint3
+- arm_joint4
+- arm_joint5
+- arm_joint6
+
+points:
+- positions: [...]
+```
+
+---
+
+# Test 5: Verify Joint States
+
+Open:
+
+```bash
+ros2 topic echo /joint_states
+```
+
+Move the arm:
+
+```bash
+ros2 run my_arm_driver send_joint_trajectory_node
+```
+
+Expected:
+
+```yaml
+name:
+- arm_joint1
+- arm_joint2
+- arm_joint3
+- arm_joint4
+- arm_joint5
+- arm_joint6
+
+position:
+- ...
+```
+
+The positions should change while the trajectory is being executed.
+
+---
+
+# Complete Verification Checklist
+
+## Driver
+
+* [ ] Driver launches correctly.
+* [ ] Serial connection is established.
+* [ ] No exceptions are generated.
+
+## Single Target
+
+* [ ] One trajectory point is received.
+* [ ] Servos move correctly.
+* [ ] Target position is reached.
+
+## Trajectory
+
+* [ ] Multiple points are executed.
+* [ ] Motion is smooth.
+* [ ] Intermediate positions are followed.
+
+## ROS Topics
+
+* [ ] `/arm_controller/joint_trajectory` is published.
+* [ ] `/joint_states` is published.
+* [ ] Joint names are correct.
+
+## Hardware
+
+* [ ] Servo offsets are correct.
+* [ ] Servo directions are correct.
+* [ ] Mechanical limits are respected.
+
+When all tests pass, the arm driver is ready to be integrated into the complete mecanum mobile manipulator bringup.

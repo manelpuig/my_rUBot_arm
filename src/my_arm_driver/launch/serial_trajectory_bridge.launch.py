@@ -32,6 +32,18 @@ def generate_launch_description():
                 "serial_port": LaunchConfiguration("serial_port"),
                 "baudrate": LaunchConfiguration("baudrate"),
 
+                "joint_names": [
+                    "arm_joint1",
+                    "arm_joint2",
+                    "arm_joint3",
+                    "arm_joint4",
+                    "arm_joint5",
+                    "arm_joint6",
+                ],
+
+                "publish_joint_states": True,
+                "joint_state_rate": 20.0,
+
                 "servo_center_deg": [90, 90, 90, 90, 90, 90],
                 "servo_sign": [1, 1, 1, 1, 1, 1],
                 "servo_min_deg": [0, 0, 0, 0, 0, 0],
