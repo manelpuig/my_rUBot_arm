@@ -1,0 +1,338 @@
+<?xml version="1.0"?>
+<robot xmlns:xacro="http://ros.org/wiki/xacro" name="my_arm_mecanum">
+
+  <!--
+    Approximate Xacro model for the 6-DOF SG90 aluminium robot arm kit
+    Amazon reference provided by the user: B0C675C2ZM
+
+    Main dimensions estimated from the supplied drawings:
+      - base plate: 90 mm x 84 mm
+      - maximum horizontal reach: about 313 mm
+      - maximum vertical height: about 505 mm
+
+    Kinematic approximation:
+      joint1: base yaw
+      joint2: shoulder pitch
+      joint3: elbow pitch
+      joint4: wrist pitch
+      joint5: wrist roll / gripper orientation
+      joint6: gripper open-close servo
+  -->
+
+  <xacro:arg name="ros2_control_params" default=""/>
+  <xacro:arg name="hardware_plugin" default="fake_components/GenericSystem"/>
+  <xacro:arg name="use_gazebo_plugin" default="false"/>
+
+  <!-- Base plate dimensions from the drawing: 9.0 cm x 8.4 cm -->
+  <xacro:arg name="base_x" default="0.090"/>
+  <xacro:arg name="base_y" default="0.084"/>
+  <xacro:arg name="base_z" default="0.012"/>
+
+  <!-- Approximate arm dimensions tuned to match ~31.3 cm horizontal reach and ~50.5 cm max height -->
+  <xacro:arg name="L1" default="0.105"/>   <!-- base plate to shoulder axis -->
+  <xacro:arg name="L2" default="0.135"/>   <!-- upper arm -->
+  <xacro:arg name="L3" default="0.125"/>   <!-- forearm -->
+  <xacro:arg name="L4" default="0.045"/>   <!-- wrist support -->
+  <xacro:arg name="tool_x" default="0.055"/> <!-- gripper/tool offset -->
+
+  <!-- Visual dimensions -->
+  <xacro:arg name="servo_x" default="0.040"/>
+  <xacro:arg name="servo_y" default="0.020"/>
+  <xacro:arg name="servo_z" default="0.038"/>
+  <xacro:arg name="plate_thickness" default="0.004"/>
+  <xacro:arg name="link_width" default="0.020"/>
+  <xacro:arg name="finger_length" default="0.060"/>
+
+  <xacro:property name="base_x" value="$(arg base_x)"/>
+  <xacro:property name="base_y" value="$(arg base_y)"/>
+  <xacro:property name="base_z" value="$(arg base_z)"/>
+  <xacro:property name="L1" value="$(arg L1)"/>
+  <xacro:property name="L2" value="$(arg L2)"/>
+  <xacro:property name="L3" value="$(arg L3)"/>
+  <xacro:property name="L4" value="$(arg L4)"/>
+  <xacro:property name="tool_x" value="$(arg tool_x)"/>
+  <xacro:property name="servo_x" value="$(arg servo_x)"/>
+  <xacro:property name="servo_y" value="$(arg servo_y)"/>
+  <xacro:property name="servo_z" value="$(arg servo_z)"/>
+  <xacro:property name="plate_t" value="$(arg plate_thickness)"/>
+  <xacro:property name="link_w" value="$(arg link_width)"/>
+  <xacro:property name="finger_l" value="$(arg finger_length)"/>
+
+  <material name="black"><color rgba="0.02 0.02 0.02 1.0"/></material>
+  <material name="dark_grey"><color rgba="0.12 0.12 0.12 1.0"/></material>
+  <material name="metal"><color rgba="0.45 0.45 0.45 1.0"/></material>
+  <material name="servo"><color rgba="0.08 0.08 0.08 1.0"/></material>
+  <material name="orange"><color rgba="1.00 0.35 0.05 1.0"/></material>
+  <material name="red"><color rgba="0.80 0.05 0.05 1.0"/></material>
+
+  <xacro:macro name="inertial_box" params="mass x y z">
+    <inertial>
+      <mass value="${mass}"/>
+      <inertia ixx="${mass*(y*y+z*z)/12.0}" ixy="0" ixz="0"
+               iyy="${mass*(x*x+z*z)/12.0}" iyz="0"
+               izz="${mass*(x*x+y*y)/12.0}"/>
+    </inertial>
+  </xacro:macro>
+
+  <xacro:macro name="box_visual_collision" params="name x y z ox oy oz material">
+    <visual name="${name}_visual">
+      <origin xyz="${ox} ${oy} ${oz}" rpy="0 0 0"/>
+      <geometry><box size="${x} ${y} ${z}"/></geometry>
+      <material name="${material}"/>
+    </visual>
+    <collision name="${name}_collision">
+      <origin xyz="${ox} ${oy} ${oz}" rpy="0 0 0"/>
+      <geometry><box size="${x} ${y} ${z}"/></geometry>
+    </collision>
+  </xacro:macro>
+
+  <link name="world"/>
+
+  <joint name="world_to_base" type="fixed">
+    <parent link="world"/>
+    <child link="base_link"/>
+    <origin xyz="0 0 0" rpy="0 0 0"/>
+  </joint>
+
+  <!-- Base plate, 90 x 84 mm -->
+  <link name="base_link">
+    <xacro:box_visual_collision name="base_plate" x="${base_x}" y="${base_y}" z="${base_z}"
+                                 ox="0" oy="0" oz="${base_z/2.0}" material="black"/>
+    <!-- Raised rotating block -->
+    <visual name="base_servo_visual">
+      <origin xyz="0 0 ${base_z + servo_z/2.0}" rpy="0 0 0"/>
+      <geometry><box size="${servo_x} ${servo_y} ${servo_z}"/></geometry>
+      <material name="servo"/>
+    </visual>
+    <collision name="base_servo_collision">
+      <origin xyz="0 0 ${base_z + servo_z/2.0}" rpy="0 0 0"/>
+      <geometry><box size="${servo_x} ${servo_y} ${servo_z}"/></geometry>
+    </collision>
+    <xacro:inertial_box mass="0.18" x="${base_x}" y="${base_y}" z="${base_z}"/>
+  </link>
+
+  <!-- Vertical bracket from base servo to shoulder axis -->
+  <link name="link1">
+    <xacro:box_visual_collision name="vertical_bracket" x="${link_w}" y="${plate_t}" z="${L1}"
+                                 ox="0" oy="0" oz="${L1/2.0}" material="metal"/>
+    <visual name="shoulder_servo_visual">
+      <origin xyz="0 0 ${L1}" rpy="0 0 0"/>
+      <geometry><box size="${servo_y} ${servo_x} ${servo_z}"/></geometry>
+      <material name="servo"/>
+    </visual>
+    <collision name="shoulder_servo_collision">
+      <origin xyz="0 0 ${L1}" rpy="0 0 0"/>
+      <geometry><box size="${servo_y} ${servo_x} ${servo_z}"/></geometry>
+    </collision>
+    <xacro:inertial_box mass="0.08" x="${link_w}" y="${plate_t}" z="${L1}"/>
+  </link>
+
+  <!-- Upper arm: two side plates along +X -->
+  <link name="link2">
+    <xacro:box_visual_collision name="upper_left_plate" x="${L2}" y="${plate_t}" z="${link_w}"
+                                 ox="${L2/2.0}" oy="0.014" oz="0" material="dark_grey"/>
+    <xacro:box_visual_collision name="upper_right_plate" x="${L2}" y="${plate_t}" z="${link_w}"
+                                 ox="${L2/2.0}" oy="-0.014" oz="0" material="dark_grey"/>
+    <visual name="elbow_servo_visual">
+      <origin xyz="${L2} 0 0" rpy="0 0 0"/>
+      <geometry><box size="${servo_y} ${servo_x} ${servo_z}"/></geometry>
+      <material name="servo"/>
+    </visual>
+    <collision name="elbow_servo_collision">
+      <origin xyz="${L2} 0 0" rpy="0 0 0"/>
+      <geometry><box size="${servo_y} ${servo_x} ${servo_z}"/></geometry>
+    </collision>
+    <xacro:inertial_box mass="0.09" x="${L2}" y="0.032" z="${link_w}"/>
+  </link>
+
+  <!-- Forearm: two side plates along +X -->
+  <link name="link3">
+    <xacro:box_visual_collision name="forearm_left_plate" x="${L3}" y="${plate_t}" z="${link_w}"
+                                 ox="${L3/2.0}" oy="0.014" oz="0" material="dark_grey"/>
+    <xacro:box_visual_collision name="forearm_right_plate" x="${L3}" y="${plate_t}" z="${link_w}"
+                                 ox="${L3/2.0}" oy="-0.014" oz="0" material="dark_grey"/>
+    <visual name="wrist_pitch_servo_visual">
+      <origin xyz="${L3} 0 0" rpy="0 0 0"/>
+      <geometry><box size="${servo_y} ${servo_x} ${servo_z}"/></geometry>
+      <material name="servo"/>
+    </visual>
+    <collision name="wrist_pitch_servo_collision">
+      <origin xyz="${L3} 0 0" rpy="0 0 0"/>
+      <geometry><box size="${servo_y} ${servo_x} ${servo_z}"/></geometry>
+    </collision>
+    <xacro:inertial_box mass="0.08" x="${L3}" y="0.032" z="${link_w}"/>
+  </link>
+
+  <!-- Wrist pitch link -->
+  <link name="link4">
+    <xacro:box_visual_collision name="wrist_support" x="${L4}" y="${link_w}" z="${plate_t}"
+                                 ox="${L4/2.0}" oy="0" oz="0" material="metal"/>
+    <visual name="wrist_roll_servo_visual">
+      <origin xyz="${L4} 0 0" rpy="0 0 0"/>
+      <geometry><box size="${servo_z} ${servo_y} ${servo_x}"/></geometry>
+      <material name="servo"/>
+    </visual>
+    <collision name="wrist_roll_servo_collision">
+      <origin xyz="${L4} 0 0" rpy="0 0 0"/>
+      <geometry><box size="${servo_z} ${servo_y} ${servo_x}"/></geometry>
+    </collision>
+    <xacro:inertial_box mass="0.05" x="${L4}" y="${link_w}" z="${plate_t}"/>
+  </link>
+
+  <!-- Gripper palm -->
+  <link name="link5">
+    <xacro:box_visual_collision name="gripper_palm" x="0.035" y="0.035" z="0.020"
+                                 ox="0.0175" oy="0" oz="0" material="black"/>
+    <xacro:inertial_box mass="0.04" x="0.035" y="0.035" z="0.020"/>
+  </link>
+
+  <!-- Left moving gripper finger controlled by joint6 -->
+  <link name="link6">
+    <visual name="left_finger_visual">
+      <origin xyz="${finger_l/2.0} 0.018 0" rpy="0 0 0"/>
+      <geometry><box size="${finger_l} 0.008 0.012"/></geometry>
+      <material name="metal"/>
+    </visual>
+    <collision name="left_finger_collision">
+      <origin xyz="${finger_l/2.0} 0.018 0" rpy="0 0 0"/>
+      <geometry><box size="${finger_l} 0.008 0.012"/></geometry>
+    </collision>
+    <xacro:inertial_box mass="0.01" x="${finger_l}" y="0.008" z="0.012"/>
+  </link>
+
+  <!-- Right fixed gripper finger, approximate. Can be made actuated later if needed. -->
+  <link name="link6_right">
+    <visual name="right_finger_visual">
+      <origin xyz="${finger_l/2.0} -0.018 0" rpy="0 0 0"/>
+      <geometry><box size="${finger_l} 0.008 0.012"/></geometry>
+      <material name="metal"/>
+    </visual>
+    <collision name="right_finger_collision">
+      <origin xyz="${finger_l/2.0} -0.018 0" rpy="0 0 0"/>
+      <geometry><box size="${finger_l} 0.008 0.012"/></geometry>
+    </collision>
+    <xacro:inertial_box mass="0.01" x="${finger_l}" y="0.008" z="0.012"/>
+  </link>
+
+  <link name="tool">
+    <visual>
+      <geometry><sphere radius="0.006"/></geometry>
+      <material name="red"/>
+    </visual>
+    <collision>
+      <geometry><sphere radius="0.006"/></geometry>
+    </collision>
+    <xacro:inertial_box mass="0.001" x="0.006" y="0.006" z="0.006"/>
+  </link>
+
+  <!-- Joints -->
+
+  <joint name="joint1" type="revolute">
+    <parent link="base_link"/>
+    <child link="link1"/>
+    <origin xyz="0 0 ${base_z}" rpy="0 0 0"/>
+    <axis xyz="0 0 1"/>
+    <limit lower="-1.5708" upper="1.5708" effort="1.0" velocity="1.0"/>
+  </joint>
+
+  <joint name="joint2" type="revolute">
+    <parent link="link1"/>
+    <child link="link2"/>
+    <origin xyz="0 0 ${L1}" rpy="0 0 0"/>
+    <axis xyz="0 1 0"/>
+    <limit lower="-1.5708" upper="1.5708" effort="1.0" velocity="1.0"/>
+  </joint>
+
+  <joint name="joint3" type="revolute">
+    <parent link="link2"/>
+    <child link="link3"/>
+    <origin xyz="${L2} 0 0" rpy="0 0 0"/>
+    <axis xyz="0 1 0"/>
+    <limit lower="-1.5708" upper="1.5708" effort="1.0" velocity="1.0"/>
+  </joint>
+
+  <joint name="joint4" type="revolute">
+    <parent link="link3"/>
+    <child link="link4"/>
+    <origin xyz="${L3} 0 0" rpy="0 0 0"/>
+    <axis xyz="0 1 0"/>
+    <limit lower="-1.5708" upper="1.5708" effort="1.0" velocity="1.0"/>
+  </joint>
+
+  <joint name="joint5" type="revolute">
+    <parent link="link4"/>
+    <child link="link5"/>
+    <origin xyz="${L4} 0 0" rpy="0 0 0"/>
+    <axis xyz="1 0 0"/>
+    <limit lower="-1.5708" upper="1.5708" effort="1.0" velocity="1.0"/>
+  </joint>
+
+  <!-- Gripper servo. Revolute is kept because the real SG90 is commanded as an angular servo. -->
+  <joint name="joint6" type="revolute">
+    <parent link="link5"/>
+    <child link="link6"/>
+    <origin xyz="0.035 0 0" rpy="0 0 0"/>
+    <axis xyz="0 0 1"/>
+    <limit lower="0.0" upper="0.7854" effort="0.5" velocity="1.0"/>
+  </joint>
+
+  <joint name="joint6_right" type="fixed">
+    <parent link="link5"/>
+    <child link="link6_right"/>
+    <origin xyz="0.035 0 0" rpy="0 0 0"/>
+  </joint>
+
+  <joint name="link5_to_tool" type="fixed">
+    <parent link="link5"/>
+    <child link="tool"/>
+    <origin xyz="${tool_x} 0 0" rpy="0 0 0"/>
+  </joint>
+
+  <!-- ros2_control -->
+  <ros2_control name="MyArmMecanumSystem" type="system">
+    <hardware>
+      <plugin>$(arg hardware_plugin)</plugin>
+    </hardware>
+
+    <joint name="joint1">
+      <command_interface name="position"/>
+      <state_interface name="position"/>
+      <state_interface name="velocity"/>
+    </joint>
+    <joint name="joint2">
+      <command_interface name="position"/>
+      <state_interface name="position"/>
+      <state_interface name="velocity"/>
+    </joint>
+    <joint name="joint3">
+      <command_interface name="position"/>
+      <state_interface name="position"/>
+      <state_interface name="velocity"/>
+    </joint>
+    <joint name="joint4">
+      <command_interface name="position"/>
+      <state_interface name="position"/>
+      <state_interface name="velocity"/>
+    </joint>
+    <joint name="joint5">
+      <command_interface name="position"/>
+      <state_interface name="position"/>
+      <state_interface name="velocity"/>
+    </joint>
+    <joint name="joint6">
+      <command_interface name="position"/>
+      <state_interface name="position"/>
+      <state_interface name="velocity"/>
+    </joint>
+  </ros2_control>
+
+  <xacro:if value="$(arg use_gazebo_plugin)">
+    <gazebo>
+      <plugin name="gz_ros2_control::GazeboSimROS2ControlPlugin"
+              filename="gz_ros2_control-system">
+        <parameters>$(arg ros2_control_params)</parameters>
+      </plugin>
+    </gazebo>
+  </xacro:if>
+
+</robot>
