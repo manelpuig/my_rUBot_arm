@@ -1,5 +1,5 @@
 <?xml version="1.0"?>
-<robot xmlns:xacro="http://ros.org/wiki/xacro" name="my_arm_mecanum">
+<robot xmlns:xacro="http://ros.org/wiki/xacro" name="my_arm">
 
   <!--
     Approximate Xacro model for the 6-DOF SG90 aluminium robot arm kit

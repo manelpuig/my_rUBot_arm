@@ -3,23 +3,22 @@
 Once you have created different robot-arm models:
 - generic 6DoF robot-arm
 - PUMA robot-arm
-![](./Images//Puma.png)
 - UR5e robot-arm
-![](./Images//ur5e.png)
 - Mecanum_5dof-arm
-![](./Images//my_arm_mecanum_5dof.jpg)
 
-We can see the different models in RVIZ2 tool:
+<p align="center">
+  <img src="./Images/Puma.png" alt="Puma Robot" width="200">
+  <img src="./Images/UR5e.png" alt="UR5e Robot" width="250">
+  <img src="./Images/my_arm_mecanum_5dof.jpg" alt="Mecanum 5DoF Arm" width="250">
+</p>
+
+We can see the different models in **RVIZ2 tool**:
 - generic 6DoF robot-arm:
 ````shell
 ros2 launch my_arm_description display.launch.py use_sim_time:=false model:=my_arm.urdf.xacro
 ````
 ![](./Images/my_arm_rviz.png)
-- Mecanum 5dof-arm:
-````shell
-ros2 launch my_arm_description display.launch.py use_sim_time:=false model:=my_arm_mecanum_5dof.urdf.xacro
-````
-![](./Images/my_arm_mecanum_5dof_rviz.png)
+
 - PUMA robot-arm:
 ````shell
 ros2 launch my_arm_description display.launch.py use_sim_time:=false model:=my_arm_puma.urdf.xacro
@@ -30,6 +29,14 @@ ros2 launch my_arm_description display.launch.py use_sim_time:=false model:=my_a
 ros2 launch my_arm_description display.launch.py use_sim_time:=false model:=my_arm_ur5e.urdf.xacro
 ````
 ![](./Images/my_arm_ur5e_rviz.png)
+
+- Mecanum 5dof-arm:
+````shell
+ros2 launch my_arm_description display.launch.py use_sim_time:=false model:=my_arm_mecanum_5dof.urdf.xacro
+````
+![](./Images/my_arm_mecanum_5dof_rviz.png)
+
+**Bringup the robot arm in Gazebo sim**:
 
 - Bringup the robot arm in Gazebo sim:
 ````shell
