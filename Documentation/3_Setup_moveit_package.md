@@ -94,18 +94,21 @@ Having done the proper modifications to your MoveIt2 package, you are now ready 
 ros2 launch my_arm_gazebo my_arm_gazebo.launch.py model:=my_arm_puma.urdf.xacro controllers:=gz_controllers.yaml use_gripper:=false
 ros2 launch my_arm_gazebo my_arm_gazebo.launch.py model:=my_arm_ur5e.urdf.xacro controllers:=gz_controllers.yaml use_gripper:=false
 ros2 launch my_arm_gazebo my_arm_gazebo.launch.py model:=my_arm_mecanum.urdf.xacro controllers:=gz_controllers_mecanum.yaml use_gripper:=true
+ros2 launch my_arm_gazebo my_arm_gazebo.launch.py model:=my_arm_mecanum_5dof.urdf.xacro controllers:=gz_controllers_mecanum.yaml use_gripper:=true
 ````
 - Launch moveit2
 ````bash
 ros2 launch puma_moveit_config move_group.launch.py use_sim_time:=true
 ros2 launch ur5e_moveit_config move_group.launch.py use_sim_time:=true
 ros2 launch mecanum_moveit_config move_group.launch.py use_sim_time:=true
+ros2 launch mecanum_5dof_moveit_config move_group.launch.py use_sim_time:=true
 ````
 - Launch rviz2
 ````bash
 ros2 launch puma_moveit_config moveit_rviz.launch.py use_sim_time:=true
 ros2 launch ur5e_moveit_config moveit_rviz.launch.py use_sim_time:=true
 ros2 launch mecanum_moveit_config moveit_rviz.launch.py use_sim_time:=true
+ros2 launch mecanum_5dof_moveit_config moveit_rviz.launch.py use_sim_time:=true
 ````
 - Launch puma_pose.py
 ````bash
