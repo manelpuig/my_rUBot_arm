@@ -45,6 +45,7 @@ setup(
             "puma_fkine_exe = my_arm_kinematics.puma_fkine:main",
             "puma_ikine_position_exe = my_arm_kinematics.puma_ikine_position:main",
             "puma_ikine_pose_exe = my_arm_kinematics.puma_ikine_pose:main",
+            "ur5e_fkine_exe = my_arm_kinematics.ur5e_fkine:main",
         ],
     },
 )

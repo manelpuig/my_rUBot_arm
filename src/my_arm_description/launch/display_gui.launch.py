@@ -70,6 +70,6 @@ def generate_launch_description():
         declare_model,
         declare_use_sim_time,
         rsp,
-        #jsp_gui,
+        jsp_gui,
         rviz,
     ])

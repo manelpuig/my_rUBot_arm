@@ -31,14 +31,14 @@ def euler_from_quaternion_xyzw(qx, qy, qz, qw):
     return roll, pitch, yaw
 
 
-class PumaFKine(Node):
+class UR5eFKine(Node):
 
     def __init__(self):
-        super().__init__("puma_fkine")
+        super().__init__("ur5e_fkine")
 
         self.declare_parameter(
             "joints",
-            [0.0, -40.0, 70.0, 0.0, 40.0, 0.0]
+            [0.0, -60.0, -135.0, -30.0, 90.0, 0.0],
         )
 
         self.declare_parameter(
@@ -51,33 +51,20 @@ class PumaFKine(Node):
         self.declare_parameter("publish_rate", 10.0)
         self.declare_parameter("settling_time", 1.0)
 
-        self.target_deg = list(
-            self.get_parameter("joints").value
-        )
-
-        self.joint_names = list(
-            self.get_parameter("joint_names").value
-        )
-
-        self.base_frame = str(
-            self.get_parameter("base_frame").value
-        )
-
-        self.tcp_frame = str(
-            self.get_parameter("tcp_frame").value
-        )
-
+        self.target_deg = list(self.get_parameter("joints").value)
+        self.joint_names = list(self.get_parameter("joint_names").value)
+        self.base_frame = self.get_parameter("base_frame").value
+        self.tcp_frame = self.get_parameter("tcp_frame").value
         self.publish_rate = float(
             self.get_parameter("publish_rate").value
         )
-
         self.settling_time = float(
             self.get_parameter("settling_time").value
         )
 
         if len(self.target_deg) != len(self.joint_names):
             raise RuntimeError(
-                "joints and joint_names must have the same length"
+                "target_deg and joint_names must have the same length"
             )
 
         self.target_rad = [
@@ -85,7 +72,7 @@ class PumaFKine(Node):
             for angle in self.target_deg
         ]
 
-        self.publisher = self.create_publisher(
+        self.pub = self.create_publisher(
             JointState,
             "/joint_states",
             10,
@@ -97,12 +84,12 @@ class PumaFKine(Node):
             self,
         )
 
-        self.start_time = self.get_clock().now()
         self.done = False
+        self.start_time = self.get_clock().now()
 
         self.publish_timer = self.create_timer(
             1.0 / self.publish_rate,
-            self.publish_joint_states,
+            self.publish_joint_state,
         )
 
         self.result_timer = self.create_timer(
@@ -113,95 +100,79 @@ class PumaFKine(Node):
         self.get_logger().info(
             f"Target joints [deg]: {self.target_deg}"
         )
-
         self.get_logger().info(
             f"Target joints [rad]: {self.target_rad}"
         )
-
         self.get_logger().info(
-            "Publishing joint configuration on /joint_states"
+            f"Publishing joint states on /joint_states"
         )
-
         self.get_logger().info(
             f"TF query: {self.base_frame} -> {self.tcp_frame}"
         )
 
-    def publish_joint_states(self):
-        message = JointState()
+    def publish_joint_state(self):
+        msg = JointState()
+        msg.header.stamp = self.get_clock().now().to_msg()
+        msg.name = self.joint_names
+        msg.position = self.target_rad
 
-        message.header.stamp = self.get_clock().now().to_msg()
-        message.name = self.joint_names
-        message.position = self.target_rad
-
-        self.publisher.publish(message)
+        self.pub.publish(msg)
 
     def try_to_print_tcp_pose(self):
-        elapsed_time = (
+        elapsed = (
             self.get_clock().now() - self.start_time
         ).nanoseconds / 1e9
 
-        if elapsed_time < self.settling_time:
+        if elapsed < self.settling_time:
             return
 
         try:
-            transform = self.tf_buffer.lookup_transform(
+            tf = self.tf_buffer.lookup_transform(
                 self.base_frame,
                 self.tcp_frame,
                 rclpy.time.Time(),
                 timeout=Duration(seconds=0.5),
             )
 
-            translation = transform.transform.translation
-            quaternion = transform.transform.rotation
+            t = tf.transform.translation
+            q = tf.transform.rotation
 
             roll, pitch, yaw = euler_from_quaternion_xyzw(
-                quaternion.x,
-                quaternion.y,
-                quaternion.z,
-                quaternion.w,
+                q.x, q.y, q.z, q.w
             )
 
             self.get_logger().info(
-                "========== PUMA FORWARD KINEMATICS =========="
+                "========== UR5e FKINE =========="
             )
-
             self.get_logger().info(
-                "Position [m]: "
-                f"x={translation.x:.4f}, "
-                f"y={translation.y:.4f}, "
-                f"z={translation.z:.4f}"
+                f"Position [m]: "
+                f"x={t.x:.4f}, y={t.y:.4f}, z={t.z:.4f}"
             )
-
             self.get_logger().info(
                 "Orientation RPY [deg]: "
                 f"roll={math.degrees(roll):.2f}, "
                 f"pitch={math.degrees(pitch):.2f}, "
                 f"yaw={math.degrees(yaw):.2f}"
             )
-
             self.get_logger().info(
                 "Quaternion: "
-                f"x={quaternion.x:.4f}, "
-                f"y={quaternion.y:.4f}, "
-                f"z={quaternion.z:.4f}, "
-                f"w={quaternion.w:.4f}"
+                f"x={q.x:.4f}, y={q.y:.4f}, "
+                f"z={q.z:.4f}, w={q.w:.4f}"
             )
-
             self.get_logger().info(
-                "============================================="
+                "================================"
             )
 
             self.done = True
 
         except Exception:
-            # TF may not yet be available during startup.
+            # TF may not be available during the first iterations.
             pass
 
 
 def main(args=None):
     rclpy.init(args=args)
-
-    node = PumaFKine()
+    node = UR5eFKine()
 
     try:
         while rclpy.ok() and not node.done:
