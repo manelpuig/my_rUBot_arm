@@ -1,24 +1,15 @@
 from launch import LaunchDescription
-from launch.actions import (
-    DeclareLaunchArgument,
-    RegisterEventHandler,
-    EmitEvent,
-)
+from launch.actions import DeclareLaunchArgument
 from launch.substitutions import LaunchConfiguration, PathJoinSubstitution
-from launch.event_handlers import OnProcessExit
-from launch.events import Shutdown
-
 from launch_ros.actions import Node
 from ament_index_python.packages import get_package_share_directory
-
 import os
-
 
 def generate_launch_description():
 
     config_dir = os.path.join(
         get_package_share_directory("my_arm_motion"),
-        "config",
+        "config"
     )
 
     sequence_file = DeclareLaunchArgument(
@@ -55,23 +46,9 @@ def generate_launch_description():
         }],
     )
 
-    shutdown_on_sequence_exit = RegisterEventHandler(
-        OnProcessExit(
-            target_action=arm_pose_sequence_node,
-            on_exit=[
-                EmitEvent(
-                    event=Shutdown(
-                        reason="Arm pose sequence finished"
-                    )
-                )
-            ],
-        )
-    )
-
     return LaunchDescription([
         sequence_file,
         controller_action,
         use_sim_time,
         arm_pose_sequence_node,
-        shutdown_on_sequence_exit,
     ])
