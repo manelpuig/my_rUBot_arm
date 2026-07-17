@@ -7,6 +7,12 @@ This repository contains several robot-arm models described with **URDF** and **
 - UR5e robot arm;
 - custom 5-DoF arm mounted on a mecanum platform.
 
+<p align="center">
+  <img src="./Images/Puma.png" alt="Puma Robot" width="200">
+  <img src="./Images/UR5e.png" alt="UR5e Robot" width="250">
+  <img src="./Images/my_arm_mecanum_5dof.jpg" alt="Mecanum 5DoF Arm" width="250">
+</p>
+
 The robot description defines the links, joints, joint axes, reference frames, visual geometry, collision geometry and tool frame.
 
 ## Visualize a model in RViz2
@@ -20,6 +26,7 @@ ros2 launch my_arm_description display.launch.py \
   use_sim_time:=false \
   model:=my_arm.urdf.xacro
 ```
+![](./Images/my_arm_rviz.png)
 
 ### PUMA arm
 
@@ -28,6 +35,7 @@ ros2 launch my_arm_description display.launch.py \
   use_sim_time:=false \
   model:=my_arm_puma.urdf.xacro
 ```
+![](./Images/my_arm_puma_rviz.png)
 
 ### UR5e arm
 
@@ -36,6 +44,7 @@ ros2 launch my_arm_description display.launch.py \
   use_sim_time:=false \
   model:=my_arm_ur5e.urdf.xacro
 ```
+![](./Images/my_arm_ur5e_rviz.png)
 
 ### Mecanum 5-DoF arm
 
@@ -44,12 +53,7 @@ ros2 launch my_arm_description display.launch.py \
   use_sim_time:=false \
   model:=my_arm_mecanum_5dof.urdf.xacro
 ```
-
-<p align="center">
-  <img src="./Images/Puma.png" alt="PUMA robot" width="200">
-  <img src="./Images/UR5e.png" alt="UR5e robot" width="250">
-  <img src="./Images/my_arm_mecanum_5dof.jpg" alt="Mecanum 5-DoF arm" width="250">
-</p>
+![](./Images/my_arm_mecanum_5dof_rviz.png)
 
 ## RViz2 and Gazebo
 
@@ -85,6 +89,7 @@ ros2 launch my_arm_gazebo my_arm_gazebo.launch.py \
   use_sim_time:=true \
   model:=my_arm_puma.urdf.xacro
 ```
+![](./Images/my_arm_puma2_gz.png)
 
 Example with the UR5e model:
 
@@ -93,6 +98,7 @@ ros2 launch my_arm_gazebo my_arm_gazebo.launch.py \
   use_sim_time:=true \
   model:=my_arm_ur5e.urdf.xacro
 ```
+![](./Images/my_arm_ur5e_gz.png)
 
 The bringup normally starts Gazebo, loads the selected Xacro model, spawns the robot and activates the controllers.
 
@@ -129,5 +135,7 @@ The input is a joint configuration:
 ```text
 q = [q1, q2, q3, q4, q5, q6]
 ```
+![](./Images/send_joints_puma.png)
+![](./Images/send_joints_ur5e.png)
 
 In the next document, a Cartesian TCP pose is converted into these joint values using robot kinematics.
