@@ -32,13 +32,13 @@ def generate_launch_description():
 
     declare_controllers = DeclareLaunchArgument(
         "controllers",
-        default_value="gz_controllers_mecanum.yaml",
+        default_value="gz_controllers.yaml",
         description="Controllers YAML file in my_arm_gazebo/config",
     )
 
     declare_use_gripper = DeclareLaunchArgument(
         "use_gripper",
-        default_value="true",
+        default_value="false",
         description="Spawn gripper_controller",
     )
 
@@ -134,6 +134,7 @@ def generate_launch_description():
         declare_use_sim_time,
         declare_model,
         declare_controllers,
+        declare_use_gripper,
 
         # Start Gazebo first
         gz,

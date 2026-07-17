@@ -186,7 +186,8 @@ This package defines **how ROS talks to the real arm**.
 
 Clone your project:
 ````shel
-cd /root/
+sudo apt update
+sudo apt install ros-humble-ur
 git clone https://github.com/manelpuig/ROS2_my_robot_arm_ws.git
 cd ROS2_my_robot_arm_ws
 unset AMENT_PREFIX_PATH COLCON_PREFIX_PATH CMAKE_PREFIX_PATH

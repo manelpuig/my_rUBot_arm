@@ -72,7 +72,25 @@ ros2 launch my_arm_control send_pose_trajectory.launch.py use_sim_time:=true rob
 ![](./Images/send_pose_puma.png)
 ![](./Images/send_pose_puma_node.png)
 ![](./Images/send_pose_puma_robodk.png)
-
+- Launch the node:
+````bash
+ros2 run my_arm_kinematics puma_ikine_pose_exe --ros-args \
+  -p use_sim_time:=true \
+  -p target_xyz:="[0.40,0.20,0.60]" \
+  -p target_rpy_deg:="[0.0,30.0,0.0]" \
+  -p elbow:=up \
+  -p wrist:=noflip \
+  -p tcp_frame:=tool \
+  -p tool_z:=0.15
+````
+- Launch the launch file:
+````bash
+ros2 launch my_arm_kinematics puma_ikine_pose.launch.py \
+  target_xyz:="[0.45,0.10,0.55]" \
+  target_rpy_deg:="[0.0,20.0,45.0]" \
+  elbow:=up \
+  wrist:=noflip
+````
 
 ## Numerical solution
 

@@ -85,6 +85,7 @@ class PumaIKinePose(Node):
         self.declare_parameter("L2", 0.4318)
         self.declare_parameter("L3", 0.43208)
         self.declare_parameter("d3", 0.1397)
+        self.declare_parameter("tool_z", 0.15)
 
         self.declare_parameter("elbow", "up")
         self.declare_parameter("wrist", "noflip")
@@ -94,7 +95,7 @@ class PumaIKinePose(Node):
         self.declare_parameter("joint_names", ["joint1", "joint2", "joint3", "joint4", "joint5", "joint6"])
 
         self.declare_parameter("base_frame", "base_link")
-        self.declare_parameter("tcp_frame", "puma_tool")
+        self.declare_parameter("tcp_frame", "tool")
 
         self.pub = self.create_publisher(
             JointTrajectory,
@@ -115,13 +116,33 @@ class PumaIKinePose(Node):
         return Rz(q1) @ Ry(q2 + q3)
 
     def ikine_pose(self):
-        x, y, z = [float(v) for v in self.get_parameter("target_xyz").value]
-        roll, pitch, yaw = deg2rad(self.get_parameter("target_rpy_deg").value)
+        # Desired TCP pose
+        tcp_xyz = np.array(
+            [float(v) for v in self.get_parameter("target_xyz").value],
+            dtype=float
+        )
+
+        roll, pitch, yaw = deg2rad(
+            self.get_parameter("target_rpy_deg").value
+        )
 
         L1 = float(self.get_parameter("L1").value)
         L2 = float(self.get_parameter("L2").value)
         L3 = float(self.get_parameter("L3").value)
         d3 = float(self.get_parameter("d3").value)
+        tool_z = float(self.get_parameter("tool_z").value)
+
+        # Desired TCP orientation
+        R06_target = rpy_to_R(roll, pitch, yaw)
+
+        # Tool offset expressed in the tool/link6 frame
+        tool_offset_local = np.array([0.0, 0.0, tool_z])
+
+        # Convert desired TCP position into wrist-centre position
+        wrist_xyz = tcp_xyz - R06_target @ tool_offset_local
+        self.wrist_xyz = wrist_xyz
+
+        x, y, z = wrist_xyz
 
         r = math.sqrt(x * x + y * y)
 
@@ -166,7 +187,6 @@ class PumaIKinePose(Node):
         q2 = math.atan2(sz, cx)
         q3 = wrap_to_pi(phi_total - q2)
 
-        R06_target = rpy_to_R(roll, pitch, yaw)
         R03 = self.R03(q1, q2, q3)
         R36 = R03.T @ R06_target
 
@@ -209,8 +229,14 @@ class PumaIKinePose(Node):
         msg.points.append(point)
         self.pub.publish(msg)
 
-        self.get_logger().info(f"Target XYZ [m]: {self.get_parameter('target_xyz').value}")
-        self.get_logger().info(f"Target RPY [deg]: {self.get_parameter('target_rpy_deg').value}")
+        self.get_logger().info(
+            "Calculated wrist center [m]: "
+            f"[{self.wrist_xyz[0]:.4f}, "
+            f"{self.wrist_xyz[1]:.4f}, "
+            f"{self.wrist_xyz[2]:.4f}]"
+        )
+        self.get_logger().info(f"Target TCP XYZ [m]: {self.get_parameter('target_xyz').value}")
+        self.get_logger().info(f"Target TCP RPY [deg]: {self.get_parameter('target_rpy_deg').value}")
         self.get_logger().info(f"IK solution [deg]: {rad2deg(q_rad)}")
         self.get_logger().info(f"IK solution [rad]: {q_rad}")
 
