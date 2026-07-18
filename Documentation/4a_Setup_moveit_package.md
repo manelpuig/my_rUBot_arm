@@ -218,6 +218,8 @@ The action servers available in the system can be checked with:
 ros2 action list
 ros2 action info /arm_controller/follow_joint_trajectory -t
 ```
+- click on the Auto Add FollowJointsTrajectory Controllers For Each Planning Group button
+- That's it! You have just defined the MoveIt Controllers that will allow the MoveIt2 package to plan and execute the motions on the simulated robot.
 
 The MoveIt controller name, action namespace and joint list must match the controllers used by the simulated or real robot.
 
@@ -238,6 +240,27 @@ cd ~/ros2_ws
 colcon build --symlink-install
 source install/setup.bash
 ```
+
+**Fine tune the generated MoveIt2 package**
+
+You will need to do a couple of modifications in order to have it fully working:
+- update to the joint_limits.yaml file with
+       - change max_velocityto 100.0 and max_accelerationto 0.0
+       - define the joint limits for each joint of the robot arm
+              - has_position_limits: true
+              - min_position: -3.1415926535897931
+              - max_position: 3.1415926535897931
+- review the MoveIt Controllers
+       - review the controller names and types
+       ````bash
+       ros2 action list
+       ros2 action info /gripper_controller/gripper_cmd -t
+       ````
+       - The robot arm controller is joint_trajectory_controller and the type is FollowJointTrajectory
+       - The gripper controller is gripper_controllerand the type is GripperCommand
+       - Modify themoveit_controllers.yamlfile according to the previous names
+
+Having done the proper modifications to your MoveIt2 package, you are now ready to start using it to control the simulated UR3e robotic arm.
 
 ## 6. Main files in a MoveIt configuration package
 
