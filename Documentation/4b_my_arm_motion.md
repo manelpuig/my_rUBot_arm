@@ -1,97 +1,100 @@
 # Arm motion with MoveIt 2
 
-In the previous document, we created and configured the MoveIt 2 packages for the different robot arms.
+In the previous document, we created and configured a MoveIt 2 package for each robot arm.
 
 MoveIt now knows:
 
 - the robot model from the URDF;
-- the planning groups and semantic information from the SRDF;
+- the semantic model from the SRDF;
 - the numerical inverse kinematics solver;
 - the joint limits;
-- the self-collision rules;
+- the allowed self-collisions;
+- the motion planner;
 - the trajectory controller.
 
-In this document, we will use the `my_arm_motion` package to send Cartesian targets to the robot and execute movements.
+In this document, we use the `my_arm_motion` package to plan and execute two basic industrial robot movements:
 
-We will study:
+- **MoveJ:** joint-space motion to a Cartesian target;
+- **MoveL:** straight-line Cartesian motion to a Cartesian target.
 
-- numerical inverse kinematics;
-- the effect of the IK seed;
-- motion planning to one Cartesian pose;
-- trajectory execution;
-- pose sequences defined in YAML files;
-- collision checking and the current limitations of the examples;
-- unreachable targets, singularities and planning errors.
+We also use optional trajectory checks to detect configurations close to singularities.
 
-## 1. The `my_arm_motion` package
+This document only covers single MoveJ and MoveL commands. Motion sequences, Planning Scene objects and automatic selection between different planning candidates will be studied later.
 
-The `my_arm_motion` package contains generic ROS 2 nodes for different 6-DOF robot arms.
+## 1. Why use numerical inverse kinematics?
 
-The same nodes can be used with the PUMA and UR5e robots because both MoveIt configuration packages use:
+Inverse kinematics calculates the joint angles required to reach a desired end-effector pose.
 
-- the planning group `arm`;
-- the end-effector link `tool`;
-- the base frame `base_link`;
-- the joint names `joint1` to `joint6`;
-- the controller action `/arm_controller/follow_joint_trajectory`.
+Analytical inverse kinematics uses equations developed for one specific robot geometry. It can be fast and can show the different elbow and wrist solutions explicitly. However:
 
-The package provides two main executables:
+- the equations are different for every robot;
+- they can be difficult to derive;
+- not every robot has a simple analytical solution;
+- modifications to the robot geometry may require new equations.
 
-| Executable | Launch file | Purpose |
-|---|---|---|
-| `arm_pose_exe` | `arm_pose.launch.py` | Move the robot to one Cartesian pose |
-| `arm_pose_sequence_exe` | `arm_pose_sequence.launch.py` | Execute a sequence of Cartesian poses from a YAML file |
+MoveIt normally uses a numerical IK solver. The solver searches for a valid joint configuration starting from an initial configuration called the **IK seed**.
 
-The package structure is:
+Numerical IK is useful here because the same motion nodes can be used with different robot arms. Only the MoveIt configuration package and robot model need to be adapted.
+
+## 2. What MoveIt adds
+
+Inverse kinematics only finds a joint configuration for a target pose. It does not describe how the robot should move to that configuration.
+
+MoveIt adds:
+
+- joint-limit checking;
+- self-collision checking;
+- collision checking with Planning Scene objects;
+- joint-space motion planning with OMPL;
+- Cartesian-path calculation;
+- velocity and acceleration scaling;
+- trajectory execution through `ros2_control`.
+
+A valid IK solution does not guarantee that a valid trajectory exists. For this reason, the nodes separate three operations:
+
+1. calculate or follow the inverse kinematics;
+2. plan and validate the trajectory;
+3. execute the trajectory.
+
+## 3. The motion nodes
+
+The current examples use four nodes:
+
+| Python node | Launch file | Motion | Singularity check |
+|---|---|---|---|
+| `arm_movej.py` | `arm_movej.launch.py` | Joint-space MoveJ | No |
+| `arm_movel.py` | `arm_movel.launch.py` | Straight Cartesian MoveL | No |
+| `arm_movej_sing.py` | `arm_movej_sing.launch.py` | Joint-space MoveJ | Yes |
+| `arm_movel_sing.py` | `arm_movel_sing.launch.py` | Straight Cartesian MoveL | Yes |
+
+The package structure used in this document is:
 
 ```text
 my_arm_motion/
-├── config/
-│   ├── puma_handshake.yaml
-│   └── ur5e_handshake.yaml
 ├── launch/
-│   ├── arm_pose.launch.py
-│   └── arm_pose_sequence.launch.py
+│   ├── arm_movej.launch.py
+│   ├── arm_movel.launch.py
+│   ├── arm_movej_sing.launch.py
+│   └── arm_movel_sing.launch.py
 └── my_arm_motion/
-    ├── arm_pose.py
-    └── arm_pose_sequence.py
+    ├── arm_movej.py
+    ├── arm_movel.py
+    ├── arm_movej_sing.py
+    └── arm_movel_sing.py
 ```
 
-## 2. Motion flow
+The examples assume that all robot arms use:
 
-For a single Cartesian target, the general flow is:
+- planning group: `arm`;
+- base frame: `base_link`;
+- end-effector link: `tool`;
+- joints: `joint1` to `joint6`.
 
-```text
-Cartesian target [x, y, z, roll, pitch, yaw]
-                       ↓
-Transform target to the planning frame
-                       ↓
-MoveIt `/compute_ik` service
-                       ↓
-Kinematically valid joint configuration
-                       ↓
-MoveIt joint-space motion planning
-                       ↓
-Trajectory execution
-                       ↓
-FollowJointTrajectory controller
-                       ↓
-Gazebo or real robot
-```
+## 4. Start the simulation
 
-It is important to distinguish three operations:
+Open one terminal and launch the robot in Gazebo.
 
-1. **Inverse kinematics:** finds joint values for the desired end-effector pose.
-2. **Motion planning:** finds a path from the current joint configuration to the target configuration.
-3. **Trajectory execution:** sends the planned movement to the robot controller.
-
-A valid IK solution does not automatically mean that the solution is collision-free or that a valid path exists.
-
-## 3. Start the simulation
-
-Open one terminal for the simulated robot.
-
-### 3.1 PUMA
+### PUMA
 
 ```bash
 ros2 launch my_arm_gazebo my_arm_gazebo.launch.py \
@@ -101,7 +104,7 @@ ros2 launch my_arm_gazebo my_arm_gazebo.launch.py \
   use_gripper:=false
 ```
 
-### 3.2 UR5e
+### UR5e
 
 ```bash
 ros2 launch my_arm_gazebo my_arm_gazebo.launch.py \
@@ -111,25 +114,16 @@ ros2 launch my_arm_gazebo my_arm_gazebo.launch.py \
   use_gripper:=false
 ```
 
-Check that the robot is visible in Gazebo and that the controllers are active.
-
-Useful commands are:
+Check the controllers and joint states:
 
 ```bash
 ros2 control list_controllers
 ros2 topic echo /joint_states --once
-ros2 action list
 ```
 
-The expected arm action is:
+## 5. Start MoveIt and RViz2
 
-```text
-/arm_controller/follow_joint_trajectory
-```
-
-## 4. Start MoveIt 2 and RViz2
-
-Open a second terminal and start the MoveIt `move_group` node.
+Open a second terminal and start `move_group`.
 
 ### PUMA
 
@@ -145,7 +139,7 @@ ros2 launch ur5e_moveit_config move_group.launch.py \
   use_sim_time:=true
 ```
 
-Open a third terminal for RViz2.
+Open a third terminal and start RViz2.
 
 ### PUMA
 
@@ -161,526 +155,468 @@ ros2 launch ur5e_moveit_config moveit_rviz.launch.py \
   use_sim_time:=true
 ```
 
-RViz2 is not required by the motion node, but it is very useful for observing:
+In these packages, `moveit_rviz.launch.py` starts RViz2 but does not replace `move_group.launch.py`. Both terminals must remain active.
 
-- the current robot configuration;
-- the target configuration;
-- the planned trajectory;
-- self-collisions;
-- obstacles in the Planning Scene.
+RViz2 is not required for execution, but it is useful for observing the robot state, the planned trajectory, self-collisions and Planning Scene objects.
 
-## 5. Define a Cartesian target
+Useful MoveIt interfaces are:
 
-A Cartesian pose contains a position and an orientation.
+```bash
+ros2 service list | grep compute_ik
+ros2 service list | grep compute_fk
+ros2 service list | grep compute_cartesian_path
+ros2 action list | grep execute_trajectory
+```
 
-The launch file uses:
+## 6. Cartesian targets
+
+All four launch files use:
 
 - `target_xyz`: position `[x, y, z]` in millimetres;
 - `target_rpy`: orientation `[roll, pitch, yaw]` in degrees.
 
-For example:
+The launch file converts millimetres to metres and degrees to radians. The Python node converts roll, pitch and yaw to a quaternion.
+
+The target is normally defined in `base_link` and must be reached by the `tool` link.
+
+## 7. MoveJ: joint-space motion
+
+MoveJ receives a Cartesian target, but the planned path is in joint space.
+
+The node performs this flow:
 
 ```text
-target_xyz:=[140, -800, 300]
-target_rpy:=[0, 70, -90]
+Cartesian target
+      ↓
+Numerical IK with a seed
+      ↓
+Collision-aware joint goal
+      ↓
+OMPL joint-space planning
+      ↓
+Collision-checked joint trajectory
+      ↓
+ExecuteTrajectory
 ```
 
-The launch file converts:
+The end effector does not normally follow a straight line during MoveJ. Each joint follows the planned joint trajectory.
 
-- millimetres to metres;
-- degrees to radians.
+MoveJ is normally used for:
 
-The Python node converts roll, pitch and yaw to a quaternion before sending the pose to MoveIt.
+- large movements in free space;
+- moving to an approach configuration;
+- returning to a safe position;
+- avoiding obstacles known by MoveIt.
 
-By default, the target pose and the MoveIt planning frame are both `base_link`.
+### 7.1 Plan a UR5e MoveJ
 
-## 6. Move to one Cartesian pose
-
-The `arm_pose.py` node performs the following operations:
-
-1. reads the Cartesian target;
-2. transforms it to the MoveIt planning frame using TF2;
-3. selects the IK seed;
-4. calls the MoveIt `/compute_ik` service;
-5. prints the resulting joint configuration;
-6. asks MoveIt to move to that joint configuration;
-7. waits until execution finishes;
-8. closes the node.
-
-### 6.1 PUMA example
+This example plans a movement to an approach pose:
 
 ```bash
-ros2 launch my_arm_motion arm_pose.launch.py \
+ros2 launch my_arm_motion arm_movej.launch.py \
   use_sim_time:=true \
-  target_xyz:="[140,-800,300]" \
-  target_rpy:="[0.0,70.0,-90.0]" \
-  seed_from_joint_states:=false \
-  seed_joints:="[-90,-40,30,0,0,0]" \
-  execute:=true
-```
-
-### 6.2 UR5e example
-
-```bash
-ros2 launch my_arm_motion arm_pose.launch.py \
-  use_sim_time:=true \
-  target_xyz:="[0,-400,500]" \
+  target_xyz:="[0,-400,450]" \
   target_rpy:="[90.0,0.0,0.0]" \
-  seed_from_joint_states:=false \
-  seed_joints:="[-60,-60,-100,170,-90,0]" \
+  seed_from_joint_states:=true \
+  max_velocity:=0.1 \
+  max_acceleration:=0.1 \
+  execute:=false
+```
+
+`execute:=false` still calculates IK and plans the complete MoveJ trajectory. It only disables trajectory execution.
+
+If planning succeeds, execute the movement:
+
+```bash
+ros2 launch my_arm_motion arm_movej.launch.py \
+  use_sim_time:=true \
+  target_xyz:="[0,-400,450]" \
+  target_rpy:="[90.0,0.0,0.0]" \
+  seed_from_joint_states:=true \
+  max_velocity:=0.1 \
+  max_acceleration:=0.1 \
   execute:=true
 ```
 
-## 7. Main launch parameters
+### 7.2 The IK seed
 
-| Parameter | Meaning | Units or values |
-|---|---|---|
-| `target_xyz` | Desired end-effector position | `[x,y,z]` in mm |
-| `target_rpy` | Desired end-effector orientation | `[roll,pitch,yaw]` in degrees |
-| `seed_from_joint_states` | Use the current robot state as the IK seed | `true` or `false` |
-| `seed_joints` | Fallback or manually selected IK seed | Six joint angles in degrees |
-| `execute` | Execute the motion after finding the IK solution | `true` or `false` |
-| `max_velocity` | Velocity scaling factor | Normally between `0.0` and `1.0` |
-| `max_acceleration` | Acceleration scaling factor | Normally between `0.0` and `1.0` |
-| `ik_timeout_sec` | Maximum time for the IK request | Seconds |
-| `print_joints` | Print the IK solution | `true` or `false` |
-| `use_sim_time` | Use the Gazebo clock | `true` in simulation |
-
-The default velocity and acceleration scaling factors in the launch file are `0.2`.
-
-Start with low values, especially before using a real robot.
-
-## 8. Understand the IK seed
-
-A numerical IK solver needs an initial joint configuration called the **seed**.
-
-The solver normally searches for a solution near this configuration. Therefore, different seeds can produce different IK solutions for the same Cartesian pose.
-
-The seed can affect:
-
-- the elbow-up or elbow-down configuration;
-- the wrist orientation;
-- the distance from joint limits;
-- convergence of the numerical solver;
-- the final path of the robot.
-
-### 8.1 Use the current robot state
+With:
 
 ```bash
 seed_from_joint_states:=true
 ```
 
-The node reads `/joint_states` and uses the current positions of `joint1` to `joint6`.
+the current joint state is used as the IK seed. This normally selects a nearby IK branch and reduces unnecessary configuration changes.
 
-This usually produces a solution close to the current robot configuration and reduces sudden configuration changes.
-
-### 8.2 Use a manual seed
+A manual seed can also be used:
 
 ```bash
 seed_from_joint_states:=false \
-seed_joints:="[-90,-40,30,0,0,0]"
+seed_joints:="[-60,-60,-100,170,-90,0]"
 ```
 
-The manual values are written in degrees. The launch file converts them to radians.
+Different seeds can produce different elbow or wrist configurations for the same Cartesian target. A different IK branch can also produce a very different planned trajectory.
 
-A manual seed is useful when:
+## 8. MoveL: straight Cartesian motion
 
-- the current configuration produces an unwanted IK branch;
-- the numerical solver does not converge;
-- we want a specific elbow or wrist configuration;
-- we want reproducible results.
+MoveL calculates a Cartesian path from the current end-effector pose to the target pose.
 
-### 8.3 Suggested experiment
+```text
+Current tool pose
+      ↓
+Cartesian interpolation to the target
+      ↓
+IK along the Cartesian waypoints
+      ↓
+Collision and joint-jump checking
+      ↓
+Time-parameterized joint trajectory
+      ↓
+ExecuteTrajectory
+```
 
-Keep the same Cartesian target and execute the node with two different manual seeds.
+The tool position follows a straight Cartesian line. If the orientation changes, it is interpolated along the path.
 
-Compare:
+MoveL is normally used for:
 
-- the joint values printed by the node;
-- the final configuration in RViz2;
-- the robot movement in Gazebo;
-- whether both seeds find a valid solution.
+- approaching or leaving an object;
+- insertion and extraction;
+- welding or dispensing;
+- moving through a work area along a controlled line.
 
-## 9. Calculate IK without moving the robot
+MoveL is not an OMPL path around obstacles. If the requested line crosses an obstacle, joint limit or unreachable region, the Cartesian path should be rejected or incomplete.
 
-Before executing a new target, it is useful to test only the inverse kinematics:
+### 8.1 Move 50 mm down
+
+First place the UR5e at the approach pose `[0,-400,450]` with the MoveJ example.
+
+Then plan a 50 mm vertical MoveL:
 
 ```bash
-ros2 launch my_arm_motion arm_pose.launch.py \
+ros2 launch my_arm_motion arm_movel.launch.py \
   use_sim_time:=true \
-  target_xyz:="[140,-800,300]" \
-  target_rpy:="[0.0,70.0,-90.0]" \
-  seed_from_joint_states:=false \
-  seed_joints:="[-90,-40,30,0,0,0]" \
-  execute:=false \
-  print_joints:=true
+  target_xyz:="[0,-400,400]" \
+  target_rpy:="[90.0,0.0,0.0]" \
+  max_step:=0.005 \
+  fraction_threshold:=1.0 \
+  avoid_collisions:=true \
+  execute:=false
 ```
 
-With `execute:=false`, the node:
+The most important result is:
 
-- calculates the IK solution;
-- prints the joint values;
-- exits without moving the robot.
-
-This is the recommended first test for a new Cartesian target.
-
-## 10. What is planned for a single pose?
-
-After receiving a valid IK solution, `arm_pose.py` calls:
-
-```python
-self.moveit2.move_to_configuration(joint_goal)
+```text
+Cartesian path completed fraction: 1.000 (100.0%)
 ```
 
-MoveIt plans a movement in joint space from the current robot configuration to the IK joint goal.
+`fraction_threshold:=1.0` requires the complete Cartesian path. A partial path is not accepted as a successful MoveL.
 
-During planning, MoveIt can consider:
+If planning succeeds, execute it:
 
+```bash
+ros2 launch my_arm_motion arm_movel.launch.py \
+  use_sim_time:=true \
+  target_xyz:="[0,-400,400]" \
+  target_rpy:="[90.0,0.0,0.0]" \
+  max_step:=0.005 \
+  fraction_threshold:=1.0 \
+  avoid_collisions:=true \
+  max_velocity:=0.1 \
+  max_acceleration:=0.1 \
+  execute:=true
+```
+
+## 9. MoveJ and MoveL comparison
+
+| Property | MoveJ | MoveL |
+|---|---|---|
+| Target input | Cartesian pose | Cartesian pose |
+| Main planning space | Joint space | Cartesian space |
+| IK use | Finds the final joint goal | Solves the interpolated Cartesian waypoints |
+| Tool path | Not necessarily straight | Straight line |
+| Obstacle behaviour | OMPL may find another joint path | Cannot move around an obstacle and remain a straight MoveL |
+| Typical use | Free-space and approach motions | Controlled motion near the task |
+
+The two commands are complementary. A common industrial pattern is:
+
+```text
+MoveJ to an approach pose
+MoveL to the work pose
+MoveL back to the approach pose
+```
+
+## 10. Collision checking
+
+The nodes can check:
+
+- robot self-collisions;
 - joint limits;
-- self-collisions;
-- collision objects in the Planning Scene;
-- the selected planning algorithm;
-- velocity and acceleration scaling.
+- collisions with objects in the MoveIt Planning Scene.
 
-The end effector does not necessarily follow a straight Cartesian line. The planner generates a valid joint-space path.
+For MoveJ, MoveIt first requests collision-aware IK and then plans a collision-checked OMPL trajectory.
 
-The current node does not request collision checking inside the `/compute_ik` call. Collision checking is performed later when MoveIt plans the movement to the IK joint goal. It is therefore possible to obtain an IK solution but fail during motion planning.
-
-If a straight Cartesian path is required, a Cartesian-path planning method must be implemented explicitly.
-
-## 11. Execute a sequence of poses
-
-The `arm_pose_sequence.py` node reads several Cartesian targets from a YAML file and executes them in order.
-
-### 11.1 PUMA handshake
+For MoveL, collision checking is applied while the Cartesian path is calculated when:
 
 ```bash
-ros2 launch my_arm_motion arm_pose_sequence.launch.py \
-  use_sim_time:=true \
-  sequence_file:=puma_handshake.yaml
+avoid_collisions:=true
 ```
 
-### 11.2 UR5e handshake
+MoveIt only knows the world geometry included in its Planning Scene. An object visible in Gazebo is not automatically a collision object in MoveIt.
 
-```bash
-ros2 launch my_arm_motion arm_pose_sequence.launch.py \
-  use_sim_time:=true \
-  sequence_file:=ur5e_handshake.yaml
-```
+Later, we will add objects such as a table or box to the Planning Scene and compare the behaviour of MoveJ and MoveL.
 
-The launch file finds the selected YAML file inside the installed `my_arm_motion/config` directory.
+## 11. Why check singularities?
 
-When the complete sequence finishes, the launch system closes automatically.
-
-## 12. YAML sequence structure
-
-A sequence file contains two sections:
-
-- `common`: parameters shared by all steps;
-- `steps`: the Cartesian targets executed in order.
-
-Example:
-
-```yaml
-common:
-  execute: true
-  group_name: arm
-  ik_link: tool
-  target_frame: base_link
-  planning_frame: base_link
-  ik_timeout_sec: 1.0
-  print_joints: true
-
-steps:
-  - name: home_start
-    target_xyz: [140, -850, 400]
-    target_rpy: [0.0, 50.0, -90.0]
-    seed_from_joint_states: false
-    seed_joints: [-90, -40, 30, 0, 0, 0]
-    duration: 4.0
-    sleep_after: 1.0
-
-  - name: approach_handshake
-    target_xyz: [140, -800, 300]
-    target_rpy: [0.0, 70.0, -90.0]
-    seed_from_joint_states: true
-    duration: 2.0
-    sleep_after: 1.0
-```
-
-### Common parameters
-
-| Parameter | Meaning |
-|---|---|
-| `execute` | Execute the trajectories or calculate IK only |
-| `group_name` | MoveIt planning group |
-| `ik_link` | Link that must reach the target pose |
-| `target_frame` | Frame used to define the targets |
-| `planning_frame` | Frame used by MoveIt |
-| `ik_timeout_sec` | IK timeout for every step |
-| `print_joints` | Print the joint solution for every step |
-| `seed_from_joint_states` | Default seed method, if defined |
-| `seed_joints` | Default manual seed, if defined |
-| `duration` | Default movement duration, if defined |
-
-### Step parameters
-
-| Parameter | Meaning |
-|---|---|
-| `name` | Descriptive name of the step |
-| `target_xyz` | Cartesian position in mm |
-| `target_rpy` | Cartesian orientation in degrees |
-| `seed_from_joint_states` | Seed method for this step |
-| `seed_joints` | Optional manual seed for this step |
-| `duration` | Time assigned to reach the joint target |
-| `sleep_after` | Pause after completing the movement |
-
-A parameter defined inside a step overrides the corresponding default value in `common`.
-
-## 13. How the current sequence node works
-
-For every YAML step, the sequence node:
-
-1. converts millimetres to metres and degrees to radians;
-2. creates a Cartesian pose;
-3. transforms the pose to the planning frame;
-4. selects the current or manual IK seed;
-5. calls `/compute_ik`;
-6. obtains the target values for `joint1` to `joint6`;
-7. creates one `JointTrajectoryPoint`;
-8. sends it directly to `/arm_controller/follow_joint_trajectory`;
-9. waits for the result;
-10. starts the next step.
-
-### Important current limitation
-
-The current sequence node uses MoveIt for numerical IK, but it does **not** ask a MoveIt motion planner to calculate the path between the sequence poses.
-
-It sends each IK joint goal directly to the trajectory controller as a single trajectory point.
-
-The current `/compute_ik` request also does not enable collision checking. Therefore, the sequence implementation does not guarantee that the target configuration or the path between poses is collision-free. The interpolated movement could pass through an obstacle, a self-collision, a singular configuration or an undesired robot configuration.
-
-Use these sequences first in simulation and in an environment without obstacles.
-
-## 14. Create a new movement sequence
-
-To create a new social or functional movement:
-
-1. copy one of the existing YAML files;
-2. give the new file a descriptive name;
-3. define an initial safe pose;
-4. add small movements between consecutive targets;
-5. use `seed_from_joint_states: true` for continuous movements;
-6. use a manual seed when a specific configuration is required;
-7. assign conservative durations;
-8. test every pose with `execute: false`;
-9. test the complete sequence in Gazebo;
-10. only then consider testing it with the real robot.
-
-After adding a new YAML file, rebuild the package so that the file is copied to the install directory:
-
-```bash
-colcon build --symlink-install --packages-select my_arm_motion
-source install/setup.bash
-```
-
-## 15. Collision checking and obstacles
-
-MoveIt can check:
-
-- self-collisions between robot links;
-- collisions with the floor, table or other objects;
-- collisions with attached objects;
-- joint-limit violations.
-
-However, MoveIt only knows the objects included in its **Planning Scene**.
-
-An object visible in Gazebo is not automatically known by MoveIt. The object must also be added to the MoveIt Planning Scene with the correct shape, size and pose.
-
-The current repository examples do not yet add custom obstacles from `my_arm_motion`.
-
-A future extension can add:
-
-- a table as a collision box;
-- a wall or safety area;
-- an object to pick;
-- an object attached to the gripper;
-- a sequence in which every movement is planned by MoveIt.
-
-## 16. Singularities
-
-A singularity is a robot configuration where the end effector loses one or more independent motion directions or where very large joint velocities may be required for a small Cartesian movement.
+A singularity is a robot configuration where one or more Cartesian motion directions are lost or where a small Cartesian velocity can require very large joint velocities.
 
 Near a singularity:
 
-- numerical IK may fail or converge slowly;
-- small target changes may produce large joint changes;
-- different seeds may produce very different solutions;
-- Cartesian motion may become unstable or impractical.
+- numerical IK can become unstable;
+- small pose changes can produce large joint changes;
+- the wrist or elbow configuration can change unexpectedly;
+- a Cartesian MoveL can become impractical;
+- trajectory tracking can become more difficult.
 
-Standard MoveIt planning does not automatically guarantee that every singular configuration is avoided.
+Collision-free planning does not automatically guarantee that the trajectory stays far from singularities.
 
-Practical methods to reduce problems are:
+## 12. Numerical singularity check
 
-- choose targets away from fully extended configurations;
-- avoid wrist alignments known to be singular;
-- use the current joint state as the seed for continuous motions;
-- compare consecutive IK solutions;
-- reject solutions with very large joint changes;
-- test the trajectory in RViz2 and Gazebo;
-- use low velocity and acceleration values.
+The `_sing` nodes add a safety check after planning and before execution.
 
-## 17. Common errors and possible causes
+For selected trajectory points, the node:
 
-### Waiting for `/compute_ik`
+1. calls MoveIt forward kinematics;
+2. perturbs each joint by a small value;
+3. calculates a numerical geometric Jacobian;
+4. computes its singular values with SVD;
+5. checks the minimum singular value;
+6. checks the Jacobian condition number;
+7. checks the maximum joint jump between consecutive trajectory points.
 
-Possible cause: the MoveIt `move_group` node is not running.
+The trajectory is rejected when:
 
-Check:
-
-```bash
-ros2 service list | grep compute_ik
+```text
+sigma_min < min_singular_value
 ```
 
-### Waiting for `/joint_states`
+or:
 
-Possible causes:
+```text
+condition_number > max_condition_number
+```
 
-- Gazebo is not running;
-- the joint-state broadcaster is not active;
-- joint names do not match `joint1` to `joint6`.
+A larger minimum singular value and a smaller condition number normally indicate a configuration farther from a singularity.
 
-Check:
+These values are practical numerical indicators, not an absolute mathematical safety guarantee. The geometric Jacobian combines translational and rotational components, so the thresholds must be validated for each robot model.
+
+## 13. MoveJ with singularity checking
+
+Plan and check the complete MoveJ trajectory:
+
+```bash
+ros2 launch my_arm_motion arm_movej_sing.launch.py \
+  use_sim_time:=true \
+  target_xyz:="[0,-400,450]" \
+  target_rpy:="[90.0,0.0,0.0]" \
+  seed_from_joint_states:=true \
+  singularity_samples:=0 \
+  min_singular_value:=0.01 \
+  max_condition_number:=200.0 \
+  max_joint_jump_deg:=45.0 \
+  execute:=false
+```
+
+With `singularity_samples:=0`, every trajectory point is checked. This is the most complete test, but it can take a long time for a large MoveJ trajectory.
+
+A successful result has this form:
+
+```text
+MoveJ planning succeeded: ... trajectory points.
+Maximum planned joint jump: ... deg.
+Singularity check passed.
+```
+
+Execute only after the check succeeds:
+
+```bash
+ros2 launch my_arm_motion arm_movej_sing.launch.py \
+  use_sim_time:=true \
+  target_xyz:="[0,-400,450]" \
+  target_rpy:="[90.0,0.0,0.0]" \
+  seed_from_joint_states:=true \
+  singularity_samples:=0 \
+  min_singular_value:=0.01 \
+  max_condition_number:=200.0 \
+  max_joint_jump_deg:=45.0 \
+  max_velocity:=0.1 \
+  max_acceleration:=0.1 \
+  execute:=true
+```
+
+If a trajectory is rejected, the current node does not automatically calculate another one. Try another IK seed, another target, another approach pose or another robot configuration.
+
+## 14. MoveL with singularity checking
+
+Starting from `[0,-400,450]`, check the complete 50 mm MoveL:
+
+```bash
+ros2 launch my_arm_motion arm_movel_sing.launch.py \
+  use_sim_time:=true \
+  target_xyz:="[0,-400,400]" \
+  target_rpy:="[90.0,0.0,0.0]" \
+  max_step:=0.005 \
+  fraction_threshold:=1.0 \
+  avoid_collisions:=true \
+  singularity_samples:=0 \
+  min_singular_value:=0.01 \
+  max_condition_number:=200.0 \
+  max_joint_jump_deg:=45.0 \
+  execute:=false
+```
+
+If the complete Cartesian path and all safety checks succeed, execute it:
+
+```bash
+ros2 launch my_arm_motion arm_movel_sing.launch.py \
+  use_sim_time:=true \
+  target_xyz:="[0,-400,400]" \
+  target_rpy:="[90.0,0.0,0.0]" \
+  max_step:=0.005 \
+  fraction_threshold:=1.0 \
+  avoid_collisions:=true \
+  singularity_samples:=0 \
+  min_singular_value:=0.01 \
+  max_condition_number:=200.0 \
+  max_joint_jump_deg:=45.0 \
+  max_velocity:=0.1 \
+  max_acceleration:=0.1 \
+  execute:=true
+```
+
+If a strict MoveL crosses a singularity, the correct result is to reject it. Moving around the singularity would no longer produce the requested straight line. Possible solutions are to change the approach configuration, tool orientation or Cartesian target.
+
+## 15. Main parameters
+
+### Common parameters
+
+| Parameter | Meaning | Typical value |
+|---|---|---|
+| `target_xyz` | Target position in millimetres | `[0,-400,450]` |
+| `target_rpy` | Target RPY orientation in degrees | `[90,0,0]` |
+| `avoid_collisions` | Enable collision checking | `true` |
+| `max_velocity` | Velocity scaling factor | `0.1` or `0.2` |
+| `max_acceleration` | Acceleration scaling factor | `0.1` or `0.2` |
+| `motion_timeout_sec` | Planning or execution wait timeout | `180.0` |
+| `execute` | Execute the validated trajectory | `false` first |
+| `use_sim_time` | Use the Gazebo clock | `true` |
+
+### MoveJ parameters
+
+| Parameter | Meaning |
+|---|---|
+| `seed_from_joint_states` | Use the current configuration as the IK seed |
+| `seed_joints` | Manual IK seed in degrees |
+| `ik_timeout_sec` | Numerical IK timeout |
+| `joint_tolerance` | Joint-goal planning tolerance |
+
+### MoveL parameters
+
+| Parameter | Meaning |
+|---|---|
+| `max_step` | Maximum Cartesian interpolation step in metres |
+| `fraction_threshold` | Minimum accepted fraction of the Cartesian path |
+| `jump_threshold` | MoveIt relative joint-jump threshold; `0.0` disables this internal check |
+
+The `_sing` nodes also apply their independent absolute check using `max_joint_jump_deg`, even when `jump_threshold:=0.0`.
+
+### Singularity-check parameters
+
+| Parameter | Meaning |
+|---|---|
+| `check_singularities` | Enable or disable the Jacobian check |
+| `jacobian_delta` | Small joint perturbation used for the numerical Jacobian |
+| `singularity_samples` | Number of checked points; `0` checks every point |
+| `min_singular_value` | Minimum accepted smallest singular value |
+| `max_condition_number` | Maximum accepted Jacobian condition number |
+| `max_joint_jump_deg` | Maximum accepted joint change between consecutive points |
+
+Using 20 samples is faster for initial experiments. Checking every point is slower but is recommended for final validation because sparse sampling can miss a critical point.
+
+## 16. Common problems
+
+### `/compute_ik`, `/compute_fk` or planning interfaces are unavailable
+
+The MoveIt `move_group` node is probably not running.
+
+### No `/joint_states`
+
+Check Gazebo, the joint-state broadcaster and the joint names:
 
 ```bash
 ros2 topic echo /joint_states --once
 ```
 
-### IK failed
+### IK fails
 
-Possible causes:
+Possible causes are:
 
-- the position is outside the workspace;
-- the orientation is impossible;
-- the seed is not appropriate;
-- the target is close to a singularity;
-- the IK timeout is too short;
-- the planning group or IK link is incorrect.
+- unreachable position;
+- impossible orientation;
+- unsuitable IK seed;
+- target close to a singularity;
+- incorrect group or tool link.
 
-Try:
+Try a closer target, another orientation or another seed.
 
-- a target closer to the robot;
-- a different orientation;
-- another seed;
-- a larger `ik_timeout_sec`;
-- `execute:=false` to test only the IK.
+### MoveL fraction is below 1.0
 
-### Trajectory goal rejected
+The complete straight path could not be calculated. Possible causes include collisions, joint limits, unreachable waypoints, singularities or an unsuitable starting configuration.
 
-Possible causes:
+Do not execute a partial path when a complete MoveL is required.
 
-- the arm controller is not active;
-- the action name is incorrect;
-- the joint names do not match;
-- a target violates a joint limit;
-- the trajectory duration is too short.
+### Singularity check rejects the trajectory
 
-Check:
+The path contains at least one sampled point below the singular-value limit or above the condition-number limit.
 
-```bash
-ros2 control list_controllers
-ros2 action info /arm_controller/follow_joint_trajectory -t
-```
+For MoveJ, try another seed, target or intermediate approach pose. For MoveL, change the start configuration, orientation or line.
 
-### Robot configuration changes unexpectedly
+### Execution timeout
 
-Possible causes:
+Low velocity scaling and long trajectories can require more time. Increase `motion_timeout_sec` only after confirming that the robot is moving correctly and the controller is active.
 
-- the IK solver selected another solution branch;
-- the manual seed is far from the current robot state;
-- the target is close to a singularity.
+## 17. Recommended workflow
 
-Try `seed_from_joint_states:=true` or select a better manual seed.
+For every new movement:
 
-### TF transformation error
+1. start Gazebo, `move_group` and RViz2;
+2. use low velocity and acceleration values;
+3. run the selected node with `execute:=false`;
+4. verify that planning succeeds;
+5. for MoveL, require `fraction=1.0`;
+6. inspect the collision and singularity results;
+7. execute only in simulation first;
+8. stop if the robot changes IK branch unexpectedly;
+9. validate the Planning Scene before using obstacles;
+10. perform additional safety validation before using a real robot.
 
-Possible causes:
+## 18. Next steps
 
-- `target_frame` or `planning_frame` is incorrect;
-- the required transform is not being published;
-- the robot description node is not running.
+Later documents can add:
 
-Check:
+- YAML sequences that combine MoveJ and MoveL;
+- collision objects in the Planning Scene;
+- alternative IK and OMPL planning candidates;
+- automatic selection of the safest trajectory;
+- gripper commands;
+- validation with a real robot.
 
-```bash
-ros2 run tf2_ros tf2_echo base_link tool
-```
+## 19. Main conclusions
 
-## 18. Recommended test procedure
-
-For every new target or sequence:
-
-1. verify that Gazebo, controllers and MoveIt are running;
-2. calculate IK with motion disabled;
-3. inspect the printed joint values;
-4. check that the values are inside reasonable limits;
-5. plan and execute one pose in simulation;
-6. observe the complete movement in RViz2 and Gazebo;
-7. test the complete YAML sequence in simulation;
-8. use low velocity and long durations;
-9. stop if the robot changes configuration unexpectedly;
-10. validate the environment before using a real robot.
-
-## 19. Current implementation and future improvements
-
-The current package provides a simple progression:
-
-| Example | IK | MoveIt planning | Execution |
-|---|---|---|---|
-| `arm_pose.py` | MoveIt `/compute_ik` | Yes, to the IK joint goal | Through MoveIt and `ros2_control` |
-| `arm_pose_sequence.py` | MoveIt `/compute_ik` for every step | No path planning between steps | Direct `FollowJointTrajectory` goals |
-
-Possible future improvements are:
-
-- use MoveIt planning for every YAML step;
-- preview a complete sequence before execution;
-- add collision objects to the Planning Scene;
-- implement Cartesian paths;
-- compare different OMPL planners;
-- reject large joint jumps between consecutive IK solutions;
-- include singularity or manipulability checks;
-- control a gripper inside the YAML sequence;
-- use the same application with a real robot.
-
-## 20. Main conclusions
-
-- Analytical IK is useful for understanding robot geometry.
 - Numerical IK provides a general solution for different robot arms.
-- The IK seed influences the solution found by the numerical solver.
-- IK calculates a target configuration, but motion planning calculates how to reach it.
-- MoveIt can plan collision-aware movements only when the Planning Scene is correctly defined.
-- The current single-pose node uses MoveIt motion planning.
-- The current sequence node uses MoveIt IK but sends the joint targets directly to the controller.
-- Simulation and conservative motion parameters are essential before using a real robot.
-
-
-````bash
-ros2 launch my_arm_motion arm_movej.launch.py \
-  use_sim_time:=true \
-  target_xyz:="[0,-400,500]" \
-  target_rpy:="[90.0,0.0,0.0]" \
-  seed_from_joint_states:=false \
-  seed_joints:="[-60,-60,-100,170,-90,0]" \
-  execute:=false
-````
-````bash
-ros2 launch my_arm_motion arm_movej.launch.py \
-  use_sim_time:=true \
-  target_xyz:="[0,-400,500]" \
-  target_rpy:="[90.0,0.0,0.0]" \
-  seed_from_joint_states:=false \
-  seed_joints:="[-60,-60,-100,170,-90,0]" \
-  max_velocity:=0.2 \
-  max_acceleration:=0.2 \
-  execute:=true
-````
+- The IK seed can select a different elbow or wrist configuration.
+- MoveJ plans in joint space and does not produce a straight tool path.
+- MoveL follows a straight Cartesian path and cannot plan around an obstacle.
+- MoveIt checks only obstacles included in its Planning Scene.
+- Collision-free planning does not automatically guarantee singularity avoidance.
+- The `_sing` nodes validate the planned trajectory before execution.
+- `execute:=false` should always be used before executing a new movement.
