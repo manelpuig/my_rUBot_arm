@@ -23,7 +23,11 @@ setup(
     license="BSD",
     entry_points={
         "console_scripts": [
-            "arm_pose_exe = my_arm_motion.arm_pose:main",
+            "arm_movej_exe = my_arm_motion.arm_movej:main",
+            "arm_movej_sing_exe = my_arm_motion.arm_movej_sing:main",
+            "arm_movel_exe = my_arm_motion.arm_movel:main",
+            "arm_movel_sing_exe = my_arm_motion.arm_movel_sing:main",
+            "arm_motion_sequence_exe = my_arm_motion.arm_motion_sequence:main",
             "arm_pose_sequence_exe = my_arm_motion.arm_pose_sequence:main",
             "arm_pose_task_space_exe = my_arm_motion.arm_pose_task_space:main",
         ],

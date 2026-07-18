@@ -662,3 +662,25 @@ Possible future improvements are:
 - The current single-pose node uses MoveIt motion planning.
 - The current sequence node uses MoveIt IK but sends the joint targets directly to the controller.
 - Simulation and conservative motion parameters are essential before using a real robot.
+
+
+````bash
+ros2 launch my_arm_motion arm_movej.launch.py \
+  use_sim_time:=true \
+  target_xyz:="[0,-400,500]" \
+  target_rpy:="[90.0,0.0,0.0]" \
+  seed_from_joint_states:=false \
+  seed_joints:="[-60,-60,-100,170,-90,0]" \
+  execute:=false
+````
+````bash
+ros2 launch my_arm_motion arm_movej.launch.py \
+  use_sim_time:=true \
+  target_xyz:="[0,-400,500]" \
+  target_rpy:="[90.0,0.0,0.0]" \
+  seed_from_joint_states:=false \
+  seed_joints:="[-60,-60,-100,170,-90,0]" \
+  max_velocity:=0.2 \
+  max_acceleration:=0.2 \
+  execute:=true
+````

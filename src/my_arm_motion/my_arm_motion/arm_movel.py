@@ -43,29 +43,31 @@ def quat_from_rpy_zyx(roll: float, pitch: float, yaw: float):
     return float(qx), float(qy), float(qz), float(qw)
 
 
-class ArmMoveToPoseTaskSpace(Node):
-    """Plan to a Cartesian pose goal using the MoveIt MoveGroup action."""
+class ArmMoveL(Node):
+    """Compute and optionally execute a straight Cartesian tool path."""
 
     def __init__(self):
-        super().__init__("arm_move_to_pose_task_space")
+        super().__init__("arm_movel")
 
         self.declare_parameter("startup_delay_sec", 3.0)
+        self.declare_parameter("motion_timeout_sec", 180.0)
 
-        self.declare_parameter("target_xyz", [0.40, 0.00, 0.50])
-        self.declare_parameter("target_rpy", [0.0, math.pi, 0.0])
+        self.declare_parameter("target_xyz", [0.0, -0.40, 0.45])
+        self.declare_parameter("target_rpy", [math.pi / 2.0, 0.0, 0.0])
 
         self.declare_parameter("target_frame", "base_link")
         self.declare_parameter("planning_frame", "base_link")
-
         self.declare_parameter("group_name", "arm")
         self.declare_parameter("ik_link", "tool")
 
-        self.declare_parameter("position_tolerance", 0.005)
-        self.declare_parameter("orientation_tolerance", 0.01)
+        self.declare_parameter("max_step", 0.005)
+        self.declare_parameter("fraction_threshold", 0.95)
+        self.declare_parameter("jump_threshold", 0.0)
+        self.declare_parameter("avoid_collisions", True)
+
         self.declare_parameter("max_velocity", 0.2)
         self.declare_parameter("max_acceleration", 0.2)
-        self.declare_parameter("execute", True)
-        self.declare_parameter("motion_timeout_sec", 60.0)
+        self.declare_parameter("execute", False)
 
         self.target_xyz = [
             float(x) for x in self.get_parameter("target_xyz").value
@@ -79,28 +81,39 @@ class ArmMoveToPoseTaskSpace(Node):
         self.group_name = str(self.get_parameter("group_name").value)
         self.ik_link = str(self.get_parameter("ik_link").value)
 
-        self.position_tolerance = float(
-            self.get_parameter("position_tolerance").value
+        self.max_step = float(self.get_parameter("max_step").value)
+        self.fraction_threshold = float(
+            self.get_parameter("fraction_threshold").value
         )
-        self.orientation_tolerance = float(
-            self.get_parameter("orientation_tolerance").value
+        self.jump_threshold = float(
+            self.get_parameter("jump_threshold").value
         )
+        self.avoid_collisions = bool(
+            self.get_parameter("avoid_collisions").value
+        )
+
         self.max_velocity = float(self.get_parameter("max_velocity").value)
         self.max_acceleration = float(
             self.get_parameter("max_acceleration").value
         )
         self.execute_motion = bool(self.get_parameter("execute").value)
-        self.motion_timeout_sec = float(
-            self.get_parameter("motion_timeout_sec").value
-        )
         self.startup_delay_sec = float(
             self.get_parameter("startup_delay_sec").value
+        )
+        self.motion_timeout_sec = float(
+            self.get_parameter("motion_timeout_sec").value
         )
 
         if len(self.target_xyz) != 3:
             raise ValueError("Parameter 'target_xyz' must contain exactly 3 values.")
         if len(self.target_rpy) != 3:
             raise ValueError("Parameter 'target_rpy' must contain exactly 3 values.")
+        if self.max_step <= 0.0:
+            raise ValueError("Parameter 'max_step' must be greater than zero.")
+        if not 0.0 <= self.fraction_threshold <= 1.0:
+            raise ValueError("Parameter 'fraction_threshold' must be in [0, 1].")
+        if self.jump_threshold < 0.0:
+            raise ValueError("Parameter 'jump_threshold' cannot be negative.")
         if not 0.0 < self.max_velocity <= 1.0:
             raise ValueError("Parameter 'max_velocity' must be in the range (0, 1].")
         if not 0.0 < self.max_acceleration <= 1.0:
@@ -120,10 +133,11 @@ class ArmMoveToPoseTaskSpace(Node):
             end_effector_name=self.ik_link,
             group_name=self.group_name,
             callback_group=self.callback_group,
-            use_move_group_action=True,
         )
         self.moveit2.max_velocity = self.max_velocity
         self.moveit2.max_acceleration = self.max_acceleration
+        self.moveit2.cartesian_avoid_collisions = self.avoid_collisions
+        self.moveit2.cartesian_jump_threshold = self.jump_threshold
 
     def _build_target_pose(self):
         qx, qy, qz, qw = quat_from_rpy_zyx(*self.target_rpy)
@@ -171,36 +185,10 @@ class ArmMoveToPoseTaskSpace(Node):
             )
             return None
 
-    def run(self):
-        """Plan once after the executor has started in a background thread."""
-        time.sleep(self.startup_delay_sec)
-        pose_target = self._build_target_pose()
-
-        pose_planning = None
-        tf_deadline = time.monotonic() + 10.0
-        while rclpy.ok() and pose_planning is None:
-            pose_planning = self._transform_pose_to_planning_frame(pose_target)
-            if pose_planning is None:
-                if time.monotonic() >= tf_deadline:
-                    self.get_logger().error("TF was not available after 10 seconds.")
-                    return False
-                self.get_logger().warn("TF not available yet. Waiting and retrying...")
-                time.sleep(0.2)
-
-        self.get_logger().info(
-            f"Cartesian pose goal in '{self.planning_frame}': "
-            f"position=({pose_planning.pose.position.x:.4f}, "
-            f"{pose_planning.pose.position.y:.4f}, "
-            f"{pose_planning.pose.position.z:.4f}) m"
-        )
-        self.get_logger().info(
-            "Planning to a pose goal. The end-effector path is not constrained "
-            "to a Cartesian straight line."
-        )
-
-        joint_state_deadline = time.monotonic() + 10.0
+    def _wait_for_joint_state(self):
+        deadline = time.monotonic() + 10.0
         while rclpy.ok() and self.moveit2.joint_state is None:
-            if time.monotonic() >= joint_state_deadline:
+            if time.monotonic() >= deadline:
                 self.get_logger().error(
                     "No /joint_states message was received after 10 seconds."
                 )
@@ -209,88 +197,123 @@ class ArmMoveToPoseTaskSpace(Node):
             time.sleep(0.2)
 
         self.get_logger().info("Current joint state is available.")
+        return True
 
-        if self.execute_motion:
-            self.get_logger().info("Planning and executing the pose goal...")
-            self.moveit2.move_to_pose(
-                pose=pose_planning,
-                target_link=self.ik_link,
-                tolerance_position=self.position_tolerance,
-                tolerance_orientation=self.orientation_tolerance,
-                cartesian=False,
-            )
-
-            deadline = time.monotonic() + self.motion_timeout_sec
-            while rclpy.ok():
-                state = self.moveit2.query_state()
-                if state == MoveIt2State.IDLE:
-                    break
-                if time.monotonic() >= deadline:
-                    self.get_logger().error(
-                        "Planning/execution did not finish before the timeout."
-                    )
-                    return False
-                time.sleep(0.1)
-
-            error_code = self.moveit2.get_last_execution_error_code()
-            if error_code is None:
+    def _wait_for_future(self, future, operation_name):
+        deadline = time.monotonic() + self.motion_timeout_sec
+        while rclpy.ok() and not future.done():
+            if time.monotonic() >= deadline:
                 self.get_logger().error(
-                    "The MoveGroup action did not return a result code. "
-                    "Check that /move_action is available."
+                    f"{operation_name} did not finish before the timeout."
                 )
                 return False
-            else:
-                if error_code.val == error_code.SUCCESS:
-                    self.get_logger().info("Planning and execution succeeded.")
-                else:
-                    self.get_logger().error(
-                        "Planning or execution failed with MoveIt error code: "
-                        f"{error_code.val}"
-                    )
-                    return False
-        else:
-            self.get_logger().info("Planning the pose goal without execution...")
-            future = self.moveit2.plan_async(
-                pose=pose_planning,
-                target_link=self.ik_link,
-                tolerance_position=self.position_tolerance,
-                tolerance_orientation=self.orientation_tolerance,
-                cartesian=False,
-            )
+            time.sleep(0.1)
+        return future.done()
 
-            if future is None:
-                self.get_logger().error("MoveIt planning service is not available.")
-                return False
-
-            deadline = time.monotonic() + self.motion_timeout_sec
-            while rclpy.ok() and not future.done():
-                if time.monotonic() >= deadline:
-                    self.get_logger().error(
-                        "Planning did not finish before the timeout."
-                    )
-                    return False
-                time.sleep(0.1)
-
-            trajectory = self.moveit2.get_trajectory(
-                future,
-                cartesian=False,
-            )
-
-            if trajectory is None or not trajectory.points:
-                self.get_logger().error("MoveIt could not find a valid trajectory.")
-                return False
-            else:
-                self.get_logger().info(
-                    f"Planning succeeded: {len(trajectory.points)} trajectory points."
+    def _wait_for_execution(self):
+        deadline = time.monotonic() + self.motion_timeout_sec
+        while rclpy.ok():
+            if self.moveit2.query_state() == MoveIt2State.IDLE:
+                return True
+            if time.monotonic() >= deadline:
+                self.get_logger().error(
+                    "Trajectory execution did not finish before the timeout."
                 )
+                return False
+            time.sleep(0.1)
+        return False
 
-        self.get_logger().info("Task-space pose node finished.")
+    def run(self):
+        time.sleep(self.startup_delay_sec)
+
+        if not self._wait_for_joint_state():
+            return False
+
+        target_pose = self._build_target_pose()
+        target_pose = self._transform_pose_to_planning_frame(target_pose)
+        if target_pose is None:
+            return False
+
+        self.get_logger().info(
+            f"MoveL target in '{self.planning_frame}': "
+            f"position=({target_pose.pose.position.x:.4f}, "
+            f"{target_pose.pose.position.y:.4f}, "
+            f"{target_pose.pose.position.z:.4f}) m"
+        )
+        self.get_logger().info(
+            f"Computing Cartesian path: max_step={self.max_step:.4f} m, "
+            f"minimum_fraction={self.fraction_threshold:.2f}, "
+            f"avoid_collisions={self.avoid_collisions}."
+        )
+
+        future = self.moveit2.plan_async(
+            pose=target_pose,
+            target_link=self.ik_link,
+            cartesian=True,
+            max_step=self.max_step,
+        )
+
+        if future is None:
+            self.get_logger().error("The /compute_cartesian_path service is unavailable.")
+            return False
+
+        if not self._wait_for_future(future, "Cartesian planning"):
+            return False
+
+        response = future.result()
+        fraction = float(response.fraction)
+        self.get_logger().info(
+            f"Cartesian path completed fraction: {fraction:.3f} "
+            f"({100.0 * fraction:.1f}%)."
+        )
+
+        trajectory = self.moveit2.get_trajectory(
+            future,
+            cartesian=True,
+            cartesian_fraction_threshold=self.fraction_threshold,
+        )
+
+        if trajectory is None or not trajectory.points:
+            self.get_logger().error(
+                "No acceptable Cartesian trajectory was generated."
+            )
+            return False
+
+        self.get_logger().info(
+            f"Cartesian planning succeeded: {len(trajectory.points)} points."
+        )
+
+        if not self.execute_motion:
+            self.get_logger().info("execute:=false -> trajectory will not be executed.")
+            return True
+
+        self.get_logger().info("Executing the Cartesian trajectory...")
+        self.moveit2.execute(trajectory)
+
+        if not self._wait_for_execution():
+            return False
+
+        error_code = self.moveit2.get_last_execution_error_code()
+        if error_code is None:
+            self.get_logger().error(
+                "Execution finished without a MoveIt result code. "
+                "Check that /execute_trajectory is available."
+            )
+            return False
+        if error_code.val != error_code.SUCCESS:
+            self.get_logger().error(
+                f"Cartesian execution failed with MoveIt error code: {error_code.val}"
+            )
+            return False
+
+        self.get_logger().info("Cartesian trajectory execution succeeded.")
         return True
 
 
 def main():
     rclpy.init()
-    node = ArmMoveToPoseTaskSpace()
+    node = ArmMoveL()
+
     executor = MultiThreadedExecutor(num_threads=2)
     executor.add_node(node)
     executor_thread = Thread(target=executor.spin, daemon=True)

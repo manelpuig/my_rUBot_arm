@@ -56,7 +56,7 @@ def generate_launch_description():
 
     arm_pose_node = Node(
         package="my_arm_motion",
-        executable="arm_pose_exe",
+        executable="arm_movej_exe",
         name="arm_move_to_pose",
         output="screen",
         parameters=[{
