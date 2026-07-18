@@ -25,6 +25,7 @@ setup(
         "console_scripts": [
             "arm_pose_exe = my_arm_motion.arm_pose:main",
             "arm_pose_sequence_exe = my_arm_motion.arm_pose_sequence:main",
+            "arm_pose_task_space_exe = my_arm_motion.arm_pose_task_space:main",
         ],
     },
 )
