@@ -1,7 +1,5 @@
 # MoveIt2 Motion Planning Validation
 
-## Why MoveIt? Collision Avoidance and Singularity Analysis
-
 > Laboratory guide for **my_rUBot_arm**
 
 ------------------------------------------------------------------------
@@ -38,10 +36,8 @@ motions while considering a changing environment.
 
 MoveIt is a motion planning framework.
 
-Instead of executing a single trajectory, it searches for many possible
-trajectories and selects one that satisfies several constraints.
-
-Typical planning pipeline:
+It searches for many possible trajectories and selects the best one
+according to several constraints.
 
 ``` text
 Target Pose
@@ -74,15 +70,6 @@ Best trajectory
 Execute
 ```
 
-MoveIt can automatically:
-
--   avoid obstacles,
--   reject collisions,
--   reject singular trajectories,
--   compare different solutions,
--   save a trajectory,
--   execute it later.
-
 ------------------------------------------------------------------------
 
 # 2. Learning objectives
@@ -103,284 +90,269 @@ After this laboratory the student should understand:
 Launch:
 
 -   Gazebo / Fake Hardware
+````bash
+ros2 launch my_arm_gazebo my_arm_gazebo.launch.py \
+  use_sim_time:=true \
+  model:=my_arm_ur5e.urdf.xacro \
+  controllers:=gz_controllers.yaml \
+  use_gripper:=false
+````
 -   MoveIt
+````bash
+ros2 launch ur5e_moveit_config move_group.launch.py \
+  use_sim_time:=true
+````
 -   RViz
+````bash
+ros2 launch ur5e_moveit_config moveit_rviz.launch.py \
+  use_sim_time:=true
+````
 
 Move the robot to **Ready**.
+![](../Images/ur5e_ready_gazebo.png)
+![](../Images/ur5e_ready_gazebo.png)
 
 Do **not** use Home because the current Home pose is close to a wrist
 singularity.
 
-### Screenshot 1
+------------------------------------------------------------------------
 
-Robot in Ready pose.
+# 4. Laboratory roadmap
 
-### Screenshot 2
+``` text
+Experiment 1
+MoveJ planning
 
-RViz MotionPlanning panel.
+↓
+
+Experiment 2
+MoveJ + Singularity analysis
+
+↓
+
+Experiment 3
+MoveL planning
+
+↓
+
+Experiment 4
+MoveL + Singularity analysis
+
+↓
+
+Experiment 5
+Planning Scene
+
+↓
+
+Experiment 6
+MoveJ with obstacle
+
+↓
+
+Experiment 7
+Save trajectory
+
+↓
+
+Experiment 8
+Execute saved trajectory
+```
 
 ------------------------------------------------------------------------
 
-# 4. Experiment 1 --- MoveJ without obstacles
+# 5. Experiment 1 --- MoveJ planning
 
 ## Goal
 
-Verify normal MoveJ planning.
+Understand the MoveIt planning pipeline without considering
+singularities.
 
-Launch
+Run:
 
 ``` bash
 ros2 launch my_arm_motion arm_movej_candidates.launch.py \
   use_sim_time:=true \
-  target_xyz:="[0.40,0.00,0.40]" \
-  target_rpy:="[90.0,0.0,0.0]" \
-  ik_candidates:=4 \
-  plans_per_ik:=3 \
+  target_xyz:="[300,-200,400]" \
+  target_rpy:="[90,0,0]" \
+  ik_candidates:=2 \
+  plans_per_ik:=2 \
+  seed_perturbation_deg:=30.0 \
+  check_singularities:=false \
+  avoid_collisions:=true \
   execute:=false
 ```
 
 Observe:
 
 -   IK candidates
--   OMPL candidates
--   selected trajectory
--   YAML file
+-   OMPL plans
+-   Selected trajectory
+-   Saved YAML file
 
-### Discussion
+> Insert terminal output and screenshots.
 
-Many trajectories reach exactly the same TCP pose.
+Discussion:
 
-MoveIt chooses one.
-
-### Screenshots
-
--   Target pose
--   Planned trajectory
--   Console showing candidate scores
+-   Why are there several valid trajectories?
+-   Why does MoveIt select only one?
 
 ------------------------------------------------------------------------
 
-# 5. Experiment 2 --- MoveL without obstacles
+# 6. Experiment 2 --- MoveJ with singularity analysis
 
-Run
-
-``` bash
-ros2 launch my_arm_motion arm_movel_candidates.launch.py \
- use_sim_time:=true \
- target_xyz:="[0.00,-0.40,0.40]" \
- target_rpy:="[90.0,0.0,0.0]" \
- execute:=false
-```
-
-Observe the TCP path.
-
-Unlike MoveJ, MoveL must preserve one straight Cartesian line.
-
-### Discussion
-
-Why are there fewer candidates than in MoveJ?
-
-### Screenshot
-
-Straight TCP path.
-
-------------------------------------------------------------------------
-
-# 6. Experiment 3 --- Wrist singularity
-
-Find a target producing
-
--   fraction = 1.000
--   singularity rejection
-
-Example
-
-``` bash
-ros2 launch my_arm_motion arm_movel_sing.launch.py \
- use_sim_time:=true \
- target_xyz:="[0.0,400.0,400.0]" \
- target_rpy:="[90.0,0.0,0.0]" \
- singularity_samples:=0 \
- execute:=false
-```
-
-Try
-
--   Y=±400 mm
--   Y=±450 mm
--   Y=±500 mm
-
-until the trajectory crosses a wrist singularity.
-
-Repeat using
-
-``` bash
-ros2 launch my_arm_motion arm_movel_candidates.launch.py \
- use_sim_time:=true \
- target_xyz:="[0.0,400.0,400.0]" \
- target_rpy:="[90.0,0.0,0.0]" \
- execute:=false
-```
-
-Expected result:
-
-All candidates rejected.
-
-### Why?
-
-MoveL cannot change the requested straight line.
-
-If the line is singular, every candidate is singular.
-
-### Screenshots
-
--   Straight line
--   Console showing sigma_min
--   Condition number
-
-------------------------------------------------------------------------
-
-# 7. Experiment 4 --- Add an obstacle
-
-``` bash
-ros2 launch my_arm_motion arm_test_scene.launch.py \
- use_sim_time:=true \
- operation:=add \
- box_xyz:="[0,-200,400]" \
- box_size:="[180,180,550]"
-```
-
-Verify the Planning Scene.
-
-### Screenshot
-
-Obstacle visible in RViz.
-
-------------------------------------------------------------------------
-
-# 8. Experiment 5 --- MoveJ with obstacle
-
-Run
-
-``` bash
-ros2 launch my_arm_motion arm_movej_candidates.launch.py \
- use_sim_time:=true \
- target_xyz:="[0,-400,400]" \
- target_rpy:="[90,0,0]" \
- ik_candidates:=6 \
- plans_per_ik:=4 \
- execute:=false
-```
-
-Concept:
+Repeat the previous experiment using:
 
 ``` text
-Requested TCP
-
-Start -------- Target
-
-      ███ obstacle
-
-MoveJ
-
-      ↗
-Start     ↘ Target
+check_singularities:=true
+min_singular_value:=0.01
+max_condition_number:=200
 ```
 
-OMPL searches another joint-space trajectory.
+Observe:
 
-### Screenshots
+-   Rejected candidates
+-   Accepted candidates
+-   sigma_min
+-   condition number
 
--   Obstacle
--   Planned trajectory
+Discussion:
+
+-   Why are some trajectories rejected?
+-   How does singularity analysis improve safety?
+
+------------------------------------------------------------------------
+
+# 7. Experiment 3 --- MoveL planning
+
+Run:
+
+``` bash
+ros2 launch my_arm_motion arm_movel_candidates.launch.py \
+  use_sim_time:=true \
+  target_xyz:="[300,-200,400]" \
+  target_rpy:="[90,0,0]" \
+  max_step:=0.005 \
+  fraction_threshold:=1.0 \
+  check_singularities:=false \
+  execute:=false
+```
+
+Observe:
+
+-   Straight TCP path
+-   Cartesian interpolation
+-   Planning fraction
+
+Discussion:
+
+-   Why are there fewer candidates than in MoveJ?
+
+------------------------------------------------------------------------
+
+# 8. Experiment 4 --- MoveL with singularity analysis
+
+Run the same trajectory but enable singularity checking.
+
+Try several target positions until a wrist singularity is detected.
+
+Observe:
+
+-   sigma_min
+-   condition number
+-   rejected Cartesian trajectories
+
+Discussion:
+
+Why can't MoveL modify the Cartesian line to avoid the singularity?
+
+------------------------------------------------------------------------
+
+# 9. Experiment 5 --- Planning Scene
+
+Add a collision object.
+
+Verify that the obstacle appears in RViz.
+
+> Insert screenshot.
+
+------------------------------------------------------------------------
+
+# 10. Experiment 6 --- MoveJ with obstacle
+
+Plan the same motion with the obstacle present.
+
+Observe:
+
+-   Collision-free trajectory
 -   Selected candidate
+-   Different joint-space path
+
+Discussion:
+
+Why can MoveJ avoid the obstacle?
 
 ------------------------------------------------------------------------
 
-# 9. Experiment 6 --- Save trajectory
+# 11. Experiment 7 --- Save trajectory
 
-Verify
+Verify the generated YAML trajectory.
 
-``` text
-/tmp/movej_obstacle.yaml
-```
-
-contains
+Check:
 
 -   metadata
 -   joint names
 -   trajectory points
 
-### Screenshot
-
-YAML file.
+> Insert YAML excerpt.
 
 ------------------------------------------------------------------------
 
-# 10. Experiment 7 --- Execute without replanning
+# 12. Experiment 8 --- Execute saved trajectory
+
+Run:
 
 ``` bash
 ros2 launch my_arm_motion arm_execute_saved.launch.py \
- use_sim_time:=true \
- trajectory_file:=/tmp/movej_obstacle.yaml \
- start_tolerance_deg:=2.0
+  use_sim_time:=true \
+  execute:=true
 ```
 
-Observe
+Observe:
 
--   no IK
--   no OMPL
--   trajectory replay
+-   No IK computation
+-   No OMPL planning
+-   Trajectory replay
 
-### Screenshot
+Discussion:
 
-Execution console.
+Why is planning separated from execution?
 
 ------------------------------------------------------------------------
 
-# 11. Questions
+# 13. Questions
 
 1.  Why can MoveJ generate many trajectories?
-2.  Why is MoveL much more restrictive?
-3.  Why can't MoveL avoid the wrist singularity?
+2.  Why is MoveL more restrictive?
+3.  Why can't MoveL avoid a wrist singularity?
 4.  What information is stored in the YAML file?
-5.  Why is Planning Scene important?
-6.  Why is planning separated from execution?
+5.  Why is the Planning Scene important?
+6.  Why are planning and execution separated?
 
 ------------------------------------------------------------------------
 
-# 12. MoveIt vs RoboDK
+# 14. Main conclusions
 
-  Capability                       RoboDK    MoveIt
-  ------------------------------- --------- --------
-  FK                                  ✓        ✓
-  IK                                  ✓        ✓
-  MoveJ                               ✓        ✓
-  MoveL                               ✓        ✓
-  Automatic collision avoidance       ✗        ✓
-  Planning Scene                      ✗        ✓
-  OMPL planners                       ✗        ✓
-  Multiple trajectory search          ✗        ✓
-  Singularity analysis             Limited     ✓
-  Store trajectory                 Limited     ✓
-  Execute later                    Limited     ✓
-  ROS2 integration                 Partial     ✓
+MoveIt is not only a motion execution tool.
 
-------------------------------------------------------------------------
+Its main strength is its ability to:
 
-# 13. Main conclusions
+-   search,
+-   evaluate,
+-   compare,
+-   reject,
+-   select,
 
-This laboratory demonstrates that RoboDK and MoveIt are complementary.
+the best trajectory before execution.
 
-RoboDK is an excellent offline programming environment.
-
-MoveIt is a motion planning framework capable of making decisions
-automatically.
-
-The most important difference is not that both execute MoveJ or MoveL.
-
-The important difference is that MoveIt can **search**, **evaluate**,
-**compare** and **select** trajectories before execution.
-
-These capabilities are essential in collaborative robotics, autonomous
-manipulation and modern ROS2 applications.
+These capabilities are essential for modern ROS 2 robotic applications.

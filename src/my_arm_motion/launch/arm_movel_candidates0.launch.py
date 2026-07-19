@@ -2,13 +2,8 @@
 
 from launch import LaunchDescription
 from launch.actions import DeclareLaunchArgument
-from launch.substitutions import (
-    LaunchConfiguration,
-    PathJoinSubstitution,
-    PythonExpression,
-)
+from launch.substitutions import LaunchConfiguration, PythonExpression
 from launch_ros.actions import Node
-from launch_ros.substitutions import FindPackageShare
 
 
 def generate_launch_description():
@@ -18,17 +13,17 @@ def generate_launch_description():
         description="MoveL target position [mm] as [x,y,z]",
     )
 
-    target_rpy = DeclareLaunchArgument(
-        "target_rpy",
-        default_value="[0.0, 180.0, 0.0]",
-        description="MoveL target orientation [deg] as [roll,pitch,yaw]",
-    )
-
     target_xyz_m = PythonExpression([
         "[x / 1000.0 for x in ",
         LaunchConfiguration("target_xyz"),
         "]",
     ])
+
+    target_rpy = DeclareLaunchArgument(
+        "target_rpy",
+        default_value="[0.0, 180.0, 0.0]",
+        description="MoveL target orientation [deg] as [roll,pitch,yaw]",
+    )
 
     target_rpy_rad = PythonExpression([
         "[x * 3.141592653589793 / 180.0 for x in ",
@@ -36,15 +31,7 @@ def generate_launch_description():
         "]",
     ])
 
-    default_trajectory_file = PathJoinSubstitution([
-        FindPackageShare("my_arm_motion"),
-        "trajectories",
-        "movel_no_obstacle.yaml",
-    ])
-
     arguments = [
-        target_xyz,
-        target_rpy,
         DeclareLaunchArgument(
             "max_step",
             default_value="0.005",
@@ -78,7 +65,7 @@ def generate_launch_description():
         DeclareLaunchArgument(
             "singularity_samples",
             default_value="20",
-            description="Number of trajectory samples used for singularity analysis",
+            description="Number of trajectory samples used for singularity checking",
         ),
         DeclareLaunchArgument(
             "min_singular_value",
@@ -97,7 +84,7 @@ def generate_launch_description():
         ),
         DeclareLaunchArgument(
             "trajectory_file",
-            default_value=default_trajectory_file,
+            default_value="/tmp/my_arm_movel_trajectory.yaml",
             description="Output YAML trajectory file",
         ),
         DeclareLaunchArgument(
@@ -113,7 +100,6 @@ def generate_launch_description():
         DeclareLaunchArgument(
             "use_sim_time",
             default_value="true",
-            description="Use simulation clock",
         ),
     ]
 
@@ -122,24 +108,53 @@ def generate_launch_description():
         executable="arm_movel_candidates_exe",
         name="arm_movel_candidates",
         output="screen",
-        parameters=[{
-            "target_xyz": target_xyz_m,
-            "target_rpy": target_rpy_rad,
-            "max_step": LaunchConfiguration("max_step"),
-            "fraction_threshold": LaunchConfiguration("fraction_threshold"),
-            "candidate_attempts": LaunchConfiguration("candidate_attempts"),
-            "max_step_scales": LaunchConfiguration("max_step_scales"),
-            "check_singularities": LaunchConfiguration("check_singularities"),
-            "avoid_collisions": LaunchConfiguration("avoid_collisions"),
-            "singularity_samples": LaunchConfiguration("singularity_samples"),
-            "min_singular_value": LaunchConfiguration("min_singular_value"),
-            "max_condition_number": LaunchConfiguration("max_condition_number"),
-            "max_joint_jump_deg": LaunchConfiguration("max_joint_jump_deg"),
-            "trajectory_file": LaunchConfiguration("trajectory_file"),
-            "save_trajectory": LaunchConfiguration("save_trajectory"),
-            "execute": LaunchConfiguration("execute"),
-            "use_sim_time": LaunchConfiguration("use_sim_time"),
-        }],
+        parameters=[
+            {
+                "target_xyz": target_xyz_m,
+                "target_rpy": target_rpy_rad,
+                "max_step": LaunchConfiguration("max_step"),
+                "fraction_threshold": LaunchConfiguration(
+                    "fraction_threshold"
+                ),
+                "candidate_attempts": LaunchConfiguration(
+                    "candidate_attempts"
+                ),
+                "max_step_scales": LaunchConfiguration(
+                    "max_step_scales"
+                ),
+                "check_singularities": LaunchConfiguration(
+                    "check_singularities"
+                ),
+                "avoid_collisions": LaunchConfiguration(
+                    "avoid_collisions"
+                ),
+                "singularity_samples": LaunchConfiguration(
+                    "singularity_samples"
+                ),
+                "min_singular_value": LaunchConfiguration(
+                    "min_singular_value"
+                ),
+                "max_condition_number": LaunchConfiguration(
+                    "max_condition_number"
+                ),
+                "max_joint_jump_deg": LaunchConfiguration(
+                    "max_joint_jump_deg"
+                ),
+                "trajectory_file": LaunchConfiguration(
+                    "trajectory_file"
+                ),
+                "save_trajectory": LaunchConfiguration(
+                    "save_trajectory"
+                ),
+                "execute": LaunchConfiguration("execute"),
+                "use_sim_time": LaunchConfiguration("use_sim_time"),
+            }
+        ],
     )
 
-    return LaunchDescription(arguments + [node])
+    return LaunchDescription([
+        target_xyz,
+        target_rpy,
+        *arguments,
+        node,
+    ])
