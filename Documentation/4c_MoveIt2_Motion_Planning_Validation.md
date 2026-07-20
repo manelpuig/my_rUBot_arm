@@ -24,8 +24,7 @@ It can:
 -   Simulate industrial robots.
 -   Generate robot programs.
 
-However, RoboDK normally assumes that the user defines a safe
-trajectory.
+RoboDK can detect collisions and validate programmed paths. However, standard MoveJ and MoveL instructions normally follow the motion defined by the user. They do not automatically explore many alternative paths in a live ROS Planning Scene.
 
 It is not designed to continuously search among many possible robot
 motions while considering a changing environment.
@@ -152,11 +151,6 @@ MoveJ with obstacle
 ↓
 
 Experiment 7
-Save trajectory
-
-↓
-
-Experiment 8
 Execute saved trajectory
 ```
 
@@ -181,6 +175,8 @@ ros2 launch my_arm_motion arm_movej_candidates.launch.py \
   seed_perturbation_deg:=45.0 \
   check_singularities:=false \
   avoid_collisions:=true \
+  trajectory_filename:=movej_basic.yaml \
+  save_trajectory:=true \
   execute:=false
 ```
 > Seed perturbation randomly modifies the current joint configuration before solving inverse kinematics. A larger perturbation explores more IK solutions but may also increase planning failures.
@@ -214,12 +210,7 @@ MoveIt selected: IK solution 1, OMPL plan 2
 Candidate 2 was selected because it had the shortest joint-space path
 and the highest score.
 
-The trajectory was stored in: `install/my_arm_motion/share/my_arm_motion/trajectories/movej_no_obstacle.yaml`
-
-Discussion:
-
--   Why are there several valid trajectories?
--   Why does MoveIt select only one?
+The trajectory was stored in: `install/my_arm_motion/share/my_arm_motion/trajectories/`
 
 ------------------------------------------------------------------------
 
@@ -229,13 +220,18 @@ Repeat the previous experiment using:
 
 ``` text
 check_singularities:=true
-min_singular_value:=0.01
-max_condition_number:=200
+min_singular_value:=0.001
+max_condition_number:=1000
 ```
-> Node computes the singular values of J(q) in: x˙=J(q)q˙
-> ​min_singular_value: Minimum acceptable singular value. Smaller values indicate that the robot is closer to a kinematic singularity.
-> Node also computes κ(J)=σmin/​σmax​​
-> max_condition_number: Maximum acceptable Jacobian condition number. Larger values indicate poorer kinematic conditioning and a higher risk of singularity.
+Node computes the singular values of J(q) in: x˙=J(q)q˙
+
+`​min_singular_value`: Minimum acceptable singular value. Smaller values indicate that the robot is closer to a kinematic singularity.
+
+Node also computes the Jacobian condition number:  $
+\kappa(J)=\frac{\sigma_{\max}}{\sigma_{\min}}
+$
+
+`max_condition_number`: A large condition number indicates poorer kinematic conditioning and a higher risk of singularity.
 
 Run 
 ```bash
@@ -250,6 +246,8 @@ ros2 launch my_arm_motion arm_movej_candidates.launch.py \
   min_singular_value:=0.001 \
   max_condition_number:=1000.0 \
   avoid_collisions:=true \
+  trajectory_filename:=movej_singularity_checked.yaml \
+  save_trajectory:=true \
   execute:=false
 ```
 Observe:
@@ -307,8 +305,12 @@ ros2 launch my_arm_motion arm_movel_candidates.launch.py \
   target_rpy:="[90,0,0]" \
   max_step:=0.005 \
   fraction_threshold:=1.0 \
+  candidate_attempts:=3 \
+  max_step_scales:="[1.0,0.75,0.5]" \
   check_singularities:=false \
   avoid_collisions:=true \
+  trajectory_filename:=movel_basic.yaml \
+  save_trajectory:=true \
   execute:=false
 ```
 > max_step defines the maximum Cartesian distance between consecutive trajectory points
@@ -378,10 +380,12 @@ ros2 launch my_arm_motion arm_movel_candidates.launch.py \
   target_rpy:="[90,0,0]" \
   max_step:=0.005 \
   fraction_threshold:=1.0 \
-  check_singularities:=true \
-  min_singular_value:=0.001 \
-  max_condition_number:=1000.0 \
+  candidate_attempts:=3 \
+  max_step_scales:="[1.0,0.75,0.5]" \
+  check_singularities:=false \
   avoid_collisions:=true \
+  trajectory_filename:=movel_singularity_checked.yaml \
+  save_trajectory:=true \
   execute:=false
 ```
 
@@ -432,7 +436,7 @@ These relaxed limits allow the planner to compare several trajectories instead o
 
 # 9. Experiment 5 --- Planning Scene
 
-First fins best trajectory to target without obstacle
+First find best trajectory to target without obstacle
 
 ```bash
 ros2 launch my_arm_motion arm_movej_candidates.launch.py \
@@ -444,6 +448,8 @@ ros2 launch my_arm_motion arm_movej_candidates.launch.py \
   seed_perturbation_deg:=60.0 \
   check_singularities:=false \
   avoid_collisions:=true \
+  trajectory_filename:=movej_without_obstacle.yaml \
+  save_trajectory:=true \
   execute:=false
 ```
 > The trajectory selected is stored in Install folder with a default name. Copy it to `trajectroies` folder in repository if you want to keep it.
@@ -462,7 +468,8 @@ Remove the colision object if needed:
 ```bash
 ros2 launch my_arm_motion arm_test_scene.launch.py \
   use_sim_time:=true \
-  operation:=remove
+  operation:=remove \
+  object_id:=moveit_test_box
 ```
 
 Verify that the obstacle appears in RViz.
@@ -486,7 +493,8 @@ ros2 launch my_arm_motion arm_movej_candidates.launch.py \
   seed_perturbation_deg:=60.0 \
   check_singularities:=false \
   avoid_collisions:=true \
-  trajectory_file:="$(ros2 pkg prefix my_arm_motion)/share/my_arm_motion/trajectories/movej_with_obstacle.yaml" \
+  trajectory_filename:=movej_with_obstacle.yaml \
+  save_trajectory:=true \
   execute:=false
 ```
 
@@ -510,11 +518,7 @@ The exact number of valid trajectories can change between executions because IK 
 
 Singularity checking was disabled. For this reason, sigma_min=1.0 and condition=1.0 are placeholder values and not real singularity measurements.
 
-------------------------------------------------------------------------
-
-# 11. Experiment 7 --- Save trajectory
-
-Verify the generated YAML trajectory.
+Verify the generated YAML trajectory in folder: `~/my_rUBot_arm/install/my_arm_motion/share/my_arm_motion/trajectories/`
 
 Check:
 
@@ -522,85 +526,22 @@ Check:
 -   joint names
 -   trajectory points
 
-Run:
-```bash
-cp ~/my_rUBot_arm/install/my_arm_motion/share/my_arm_motion/trajectories/*.yaml ~/my_rUBot_arm/src/my_arm_motion/trajectories/
-```
-Verify the yaml file:
-```text
-metadata:
-  motion_type: MoveJ
-  planning_frame: base_link
-  group_name: arm
-  ik_link: tool
-  target_xyz:
-  - 0.3
-  - -0.2
-  - 0.4
-  target_rpy:
-  - 1.5707963267948966
-  - 0.0
-  - 0.0
-  ik_candidate: 2
-  ompl_plan: 2
-  min_sigma: 1.0
-  max_condition: 1.0
-  max_joint_jump_deg: 2.2918311805235114
-  joint_path_length: 7.785086365574627
-  worst_index: 0
-  score: 99.18857305163729
-trajectory:
-  joint_names:
-  - joint1
-  - joint2
-  - joint3
-  - joint4
-  - joint5
-  - joint6
-  points:
-  - positions:
-    - -1.5708112857767371
-    - -1.7000537014790758
-    - -1.6999473034135788
-    - 0.20008198141185127
-    - 1.5708875449804116
-    - -5.082705831157411e-05
-    velocities:
-    - -0.0
-    - 0.0
-    - -0.0
-    - 0.0
-    - 0.0
-    - 0.0
-    accelerations:
-    - 0.0
-    - 0.0
-    - 0.0
-    - 0.0
-    - 0.0
-    - 0.0
-    effort: []
-    time_from_start: 0.0
-  - positions:
-    - -1.5725282637277644
-    - -1.6998786031626179
-    - -1.700620433836015
-    - 0.20208198141185127
-    ...
-```
-
-
 ------------------------------------------------------------------------
 
-# 12. Experiment 8 --- Execute saved trajectory
+
+# 11. Experiment 7 --- Execute saved trajectory
 
 Run:
 
 ``` bash
 ros2 launch my_arm_motion arm_execute_saved.launch.py \
   use_sim_time:=true \
+  trajectory_filename:=movej_with_obstacle.yaml \
+  start_tolerance_deg:=5.0 \
   execute:=true
 ```
+![target](./Images/Motion/ur5e_target_gazebo.png)
+![target](./Images/Motion/ur5e_target_moveit.png)
 
 Observe:
 
