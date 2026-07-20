@@ -34,6 +34,7 @@ setup(
             "arm_movel_candidates_exe = my_arm_motion.arm_movel_candidates:main",
             "arm_execute_saved_exe = my_arm_motion.arm_execute_saved:main",
             "arm_test_scene_exe = my_arm_motion.arm_test_scene:main",
+            "arm_motion_sequence_saved_exe = my_arm_motion.arm_motion_sequence_saved:main",
         ],
     },
 )
