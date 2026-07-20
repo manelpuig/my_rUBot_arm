@@ -109,8 +109,9 @@ ros2 launch ur5e_moveit_config moveit_rviz.launch.py \
 ````
 
 Move the robot to **Ready**.
-![](../Images/Motion/ur5e_ready_gazebo.png)
-![](../Images/Motion/ur5e_ready_gazebo.png)
+
+![setup](./Images/Motion/ur5e_ready_gazebo.png)
+![](./Images/Motion/ur5e_ready_moveit.png)
 
 Do **not** use Home because the current Home pose is close to a wrist
 singularity.
@@ -431,17 +432,63 @@ These relaxed limits allow the planner to compare several trajectories instead o
 
 # 9. Experiment 5 --- Planning Scene
 
+First fins best trajectory to target wothout obstacle
+
+```bash
+ros2 launch my_arm_motion arm_movej_candidates.launch.py \
+  use_sim_time:=true \
+  target_xyz:="[300,-200,400]" \
+  target_rpy:="[90,0,0]" \
+  ik_candidates:=6 \
+  plans_per_ik:=4 \
+  seed_perturbation_deg:=60.0 \
+  check_singularities:=false \
+  avoid_collisions:=true \
+  execute:=false
+```
+> The trajectory selected is stored in Install folder with a default name. Copy it to `trajectroies` folder in repository if you want to keep it.
+
+
 Add a collision object.
+```bash
+ros2 launch my_arm_motion arm_test_scene.launch.py \
+  use_sim_time:=true \
+  operation:=add \
+  object_id:=moveit_test_box \
+  box_xyz:="[150,-400,250]" \
+  box_size:="[100,100,500]"
+```
+Remove the colision object if needed:
+```bash
+ros2 launch my_arm_motion arm_test_scene.launch.py \
+  use_sim_time:=true \
+  operation:=remove
+```
 
 Verify that the obstacle appears in RViz.
 
-> Insert screenshot.
+![obstacle](./Images/Motion/ur5e_obstacle.png)
 
 ------------------------------------------------------------------------
 
 # 10. Experiment 6 --- MoveJ with obstacle
 
 Plan the same motion with the obstacle present.
+
+Run:
+```bash
+ros2 launch my_arm_motion arm_movej_candidates.launch.py \
+  use_sim_time:=true \
+  target_xyz:="[300,-200,400]" \
+  target_rpy:="[90,0,0]" \
+  ik_candidates:=6 \
+  plans_per_ik:=4 \
+  seed_perturbation_deg:=60.0 \
+  check_singularities:=false \
+  avoid_collisions:=true \
+  trajectory_file:="$(ros2 pkg prefix my_arm_motion)/share/my_arm_motion/trajectories/movej_with_obstacle.yaml" \
+  execute:=false
+```
 
 Observe:
 
