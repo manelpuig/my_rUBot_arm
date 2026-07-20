@@ -109,8 +109,8 @@ ros2 launch ur5e_moveit_config moveit_rviz.launch.py \
 ````
 
 Move the robot to **Ready**.
-![](../Images/ur5e_ready_gazebo.png)
-![](../Images/ur5e_ready_gazebo.png)
+![](../Images/Motion/ur5e_ready_gazebo.png)
+![](../Images/Motion/ur5e_ready_gazebo.png)
 
 Do **not** use Home because the current Home pose is close to a wrist
 singularity.
@@ -175,13 +175,14 @@ ros2 launch my_arm_motion arm_movej_candidates.launch.py \
   use_sim_time:=true \
   target_xyz:="[300,-200,400]" \
   target_rpy:="[90,0,0]" \
-  ik_candidates:=2 \
-  plans_per_ik:=2 \
-  seed_perturbation_deg:=30.0 \
+  ik_candidates:=4 \
+  plans_per_ik:=3 \
+  seed_perturbation_deg:=45.0 \
   check_singularities:=false \
   avoid_collisions:=true \
   execute:=false
 ```
+> Seed perturbation randomly modifies the current joint configuration before solving inverse kinematics. A larger perturbation explores more IK solutions but may also increase planning failures.
 
 Observe:
 
@@ -190,7 +191,29 @@ Observe:
 -   Selected trajectory
 -   Saved YAML file
 
-> Insert terminal output and screenshots.
+### Results
+
+The planner was configured to search:
+
+- 4 IK candidates
+- 3 OMPL plans for each IK candidate
+- A maximum of 12 trajectory candidates
+
+In this execution, the first IK solution generated three valid OMPL
+trajectories. The remaining planning attempts failed.
+
+```text
+Candidate 1: valid, path=12.069, score=98.760
+Candidate 2: valid, path=11.142, score=98.853
+Candidate 3: valid, path=11.161, score=98.851
+Candidates 4-12: planning failed
+```
+MoveIt selected: IK solution 1, OMPL plan 2
+
+Candidate 2 was selected because it had the shortest joint-space path
+and the highest score.
+
+The trajectory was stored in: `install/my_arm_motion/share/my_arm_motion/trajectories/movej_no_obstacle.yaml`
 
 Discussion:
 
@@ -208,13 +231,62 @@ check_singularities:=true
 min_singular_value:=0.01
 max_condition_number:=200
 ```
+> Node computes the singular values of J(q) in: x˙=J(q)q˙
+> ​min_singular_value: Minimum acceptable singular value. Smaller values indicate that the robot is closer to a kinematic singularity.
+> Node also computes κ(J)=σmin/​σmax​​
+> max_condition_number: Maximum acceptable Jacobian condition number. Larger values indicate poorer kinematic conditioning and a higher risk of singularity.
 
+Run 
+```bash
+ros2 launch my_arm_motion arm_movej_candidates.launch.py \
+  use_sim_time:=true \
+  target_xyz:="[300,-200,400]" \
+  target_rpy:="[90,0,0]" \
+  ik_candidates:=4 \
+  plans_per_ik:=3 \
+  seed_perturbation_deg:=45.0 \
+  check_singularities:=true \
+  min_singular_value:=0.001 \
+  max_condition_number:=1000.0 \
+  avoid_collisions:=true \
+  execute:=false
+```
 Observe:
 
 -   Rejected candidates
 -   Accepted candidates
 -   sigma_min
 -   condition number
+
+### Results
+
+The planner evaluated up to 12 MoveJ trajectory candidates.
+
+Several valid candidates were found, but their kinematic quality was very different.
+
+For example:
+
+```text
+Candidate 2:
+sigma_min = 0.005132
+condition = 360.62
+path = 7.170
+score = -3.833
+
+Candidate 5:
+sigma_min = 0.157199
+condition = 12.62
+path = 3.785
+score = 15.192
+```
+Candidate 5 was selected because it had:
+
+- a larger minimum singular value;
+- a much lower condition number;
+- a shorter joint-space path;
+- the highest final score.
+
+This shows that two trajectories can reach the same target pose but have very different distances from kinematic singularities.
 
 Discussion:
 
@@ -235,8 +307,11 @@ ros2 launch my_arm_motion arm_movel_candidates.launch.py \
   max_step:=0.005 \
   fraction_threshold:=1.0 \
   check_singularities:=false \
+  avoid_collisions:=true \
   execute:=false
 ```
+> max_step defines the maximum Cartesian distance between consecutive trajectory points
+> fraction_threshold defines the minimum fraction of the Cartesian path that must be successfully generated.
 
 Observe:
 
@@ -248,6 +323,44 @@ Discussion:
 
 -   Why are there fewer candidates than in MoveJ?
 
+### Results and Discussion
+
+Unlike MoveJ planning, MoveL planning requires the Tool Center Point (TCP) to follow a straight Cartesian line from the current pose to the target pose.
+
+For each planning attempt, the node computes the Cartesian path and returns the completed path fraction.
+
+Typical results are:
+
+```text
+Candidate 1: fraction = 0.789
+Candidate 2: fraction = 1.000
+Candidate 3: fraction = 0.789
+```
+
+A fraction of **1.0** means that the complete Cartesian path was successfully generated.
+
+A fraction smaller than **1.0** means that only part of the requested straight-line motion could be planned.
+
+When `fraction_threshold = 1.0`, only complete Cartesian trajectories are accepted.
+
+An interesting observation is that executing the same command several times may produce different results. Sometimes no complete Cartesian path is found, while in other executions one of the planning attempts successfully reaches `fraction = 1.0`.
+
+This behaviour is normal. The result depends on several factors, including:
+
+- the current robot joint configuration,
+- the inverse kinematics (IK) solution selected,
+- numerical differences during the planning process,
+- the planning attempt being evaluated.
+
+The same target pose may therefore have several valid joint-space solutions, but not all of them allow the TCP to follow the required straight Cartesian line.
+
+For this reason, if no complete MoveL trajectory is found on the first execution, it is often useful to run the planner again. A different IK solution may allow the complete Cartesian path to be generated.
+
+This experiment also shows an important difference between MoveJ and MoveL planning:
+
+- **MoveJ** only requires reaching the target pose and usually offers many alternative trajectories.
+- **MoveL** requires the TCP to move along a straight Cartesian line, making the planning problem much more restrictive.
+
 ------------------------------------------------------------------------
 
 # 8. Experiment 4 --- MoveL with singularity analysis
@@ -256,15 +369,63 @@ Run the same trajectory but enable singularity checking.
 
 Try several target positions until a wrist singularity is detected.
 
+Run:
+```bash
+ros2 launch my_arm_motion arm_movel_candidates.launch.py \
+  use_sim_time:=true \
+  target_xyz:="[300,-200,400]" \
+  target_rpy:="[90,0,0]" \
+  max_step:=0.005 \
+  fraction_threshold:=1.0 \
+  check_singularities:=true \
+  min_singular_value:=0.001 \
+  max_condition_number:=1000.0 \
+  avoid_collisions:=true \
+  execute:=false
+```
+
 Observe:
 
 -   sigma_min
 -   condition number
 -   rejected Cartesian trajectories
 
-Discussion:
+### Results and Discussion
 
-Why can't MoveL modify the Cartesian line to avoid the singularity?
+The MoveL planner found several complete Cartesian trajectories.
+
+Three candidates completed the full path:
+
+```text
+Candidate 1:
+fraction = 1.000
+sigma_min = 0.003353
+condition = 602.77
+
+Candidate 2:
+fraction = 1.000
+sigma_min = 0.006041
+condition = 334.54
+
+Candidate 7:
+fraction = 1.000
+sigma_min = 0.005058
+condition = 399.65
+```
+Candidate 2 was selected because it had the best kinematic conditioning among the complete trajectories:
+
+- the highest minimum singular value;
+- the lowest condition number;
+- the highest final score.
+
+This experiment shows that several MoveL trajectories may complete the same Cartesian path, but their distance from singular configurations can be different.
+
+The singularity thresholds used in this experiment were:
+
+- min_singular_value = 0.001
+- max_condition_number = 1000
+
+These relaxed limits allow the planner to compare several trajectories instead of rejecting them immediately.
 
 ------------------------------------------------------------------------
 
