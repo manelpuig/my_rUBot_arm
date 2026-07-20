@@ -432,7 +432,7 @@ These relaxed limits allow the planner to compare several trajectories instead o
 
 # 9. Experiment 5 --- Planning Scene
 
-First fins best trajectory to target wothout obstacle
+First fins best trajectory to target without obstacle
 
 ```bash
 ros2 launch my_arm_motion arm_movej_candidates.launch.py \
@@ -455,8 +455,8 @@ ros2 launch my_arm_motion arm_test_scene.launch.py \
   use_sim_time:=true \
   operation:=add \
   object_id:=moveit_test_box \
-  box_xyz:="[150,-400,250]" \
-  box_size:="[100,100,500]"
+  box_xyz:="[100,-400,275]" \
+  box_size:="[100,140,550]"
 ```
 Remove the colision object if needed:
 ```bash
@@ -496,9 +496,19 @@ Observe:
 -   Selected candidate
 -   Different joint-space path
 
-Discussion:
+**Conclusions**
 
-Why can MoveJ avoid the obstacle?
+The obstacle was placed on the floor and close to the direct path between the initial robot position and the target.
+
+Without the obstacle, MoveIt evaluated 20 trajectories and found 10 valid trajectories. With the obstacle, only 12 trajectories could be planned, and only 4 were valid. Eight planning attempts failed, two IK attempts did not find a solution, and one IK solution was duplicated.
+
+MoveIt selected IK solution 2 and OMPL plan 2. The selected trajectory had a joint-space path length of 7.785, compared with 6.692 without the obstacle. In this experiment, the trajectory with the obstacle was approximately 16% longer.
+
+This result shows that the obstacle reduces the available motion alternatives. However, MoveIt can continue searching between different IK solutions and OMPL plans until it finds a collision-free trajectory.
+
+The exact number of valid trajectories can change between executions because IK seed generation and OMPL planning contain random elements. Therefore, the comparison describes this experiment and does not represent all mathematically possible trajectories.
+
+Singularity checking was disabled. For this reason, sigma_min=1.0 and condition=1.0 are placeholder values and not real singularity measurements.
 
 ------------------------------------------------------------------------
 
@@ -512,7 +522,73 @@ Check:
 -   joint names
 -   trajectory points
 
-> Insert YAML excerpt.
+Run:
+```bash
+cp ~/my_rUBot_arm/install/my_arm_motion/share/my_arm_motion/trajectories/*.yaml ~/my_rUBot_arm/src/my_arm_motion/trajectories/
+```
+Verify the yaml file:
+```text
+metadata:
+  motion_type: MoveJ
+  planning_frame: base_link
+  group_name: arm
+  ik_link: tool
+  target_xyz:
+  - 0.3
+  - -0.2
+  - 0.4
+  target_rpy:
+  - 1.5707963267948966
+  - 0.0
+  - 0.0
+  ik_candidate: 2
+  ompl_plan: 2
+  min_sigma: 1.0
+  max_condition: 1.0
+  max_joint_jump_deg: 2.2918311805235114
+  joint_path_length: 7.785086365574627
+  worst_index: 0
+  score: 99.18857305163729
+trajectory:
+  joint_names:
+  - joint1
+  - joint2
+  - joint3
+  - joint4
+  - joint5
+  - joint6
+  points:
+  - positions:
+    - -1.5708112857767371
+    - -1.7000537014790758
+    - -1.6999473034135788
+    - 0.20008198141185127
+    - 1.5708875449804116
+    - -5.082705831157411e-05
+    velocities:
+    - -0.0
+    - 0.0
+    - -0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    accelerations:
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    effort: []
+    time_from_start: 0.0
+  - positions:
+    - -1.5725282637277644
+    - -1.6998786031626179
+    - -1.700620433836015
+    - 0.20208198141185127
+    ...
+```
+
 
 ------------------------------------------------------------------------
 

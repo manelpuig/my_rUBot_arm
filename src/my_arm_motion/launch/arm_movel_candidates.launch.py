@@ -36,15 +36,22 @@ def generate_launch_description():
         "]",
     ])
 
-    default_trajectory_file = PathJoinSubstitution([
+    trajectory_filename = DeclareLaunchArgument(
+        "trajectory_filename",
+        default_value="movel_without_obstacle.yaml",
+        description="Name of the output YAML trajectory file",
+    )
+
+    trajectory_path = PathJoinSubstitution([
         FindPackageShare("my_arm_motion"),
         "trajectories",
-        "movel_no_obstacle.yaml",
+        LaunchConfiguration("trajectory_filename"),
     ])
 
     arguments = [
         target_xyz,
         target_rpy,
+        trajectory_filename,
         DeclareLaunchArgument(
             "max_step",
             default_value="0.005",
@@ -96,11 +103,6 @@ def generate_launch_description():
             description="Maximum accepted joint jump [deg]",
         ),
         DeclareLaunchArgument(
-            "trajectory_file",
-            default_value=default_trajectory_file,
-            description="Output YAML trajectory file",
-        ),
-        DeclareLaunchArgument(
             "save_trajectory",
             default_value="true",
             description="Save the selected trajectory to YAML",
@@ -129,13 +131,23 @@ def generate_launch_description():
             "fraction_threshold": LaunchConfiguration("fraction_threshold"),
             "candidate_attempts": LaunchConfiguration("candidate_attempts"),
             "max_step_scales": LaunchConfiguration("max_step_scales"),
-            "check_singularities": LaunchConfiguration("check_singularities"),
+            "check_singularities": LaunchConfiguration(
+                "check_singularities"
+            ),
             "avoid_collisions": LaunchConfiguration("avoid_collisions"),
-            "singularity_samples": LaunchConfiguration("singularity_samples"),
-            "min_singular_value": LaunchConfiguration("min_singular_value"),
-            "max_condition_number": LaunchConfiguration("max_condition_number"),
-            "max_joint_jump_deg": LaunchConfiguration("max_joint_jump_deg"),
-            "trajectory_file": LaunchConfiguration("trajectory_file"),
+            "singularity_samples": LaunchConfiguration(
+                "singularity_samples"
+            ),
+            "min_singular_value": LaunchConfiguration(
+                "min_singular_value"
+            ),
+            "max_condition_number": LaunchConfiguration(
+                "max_condition_number"
+            ),
+            "max_joint_jump_deg": LaunchConfiguration(
+                "max_joint_jump_deg"
+            ),
+            "trajectory_file": trajectory_path,
             "save_trajectory": LaunchConfiguration("save_trajectory"),
             "execute": LaunchConfiguration("execute"),
             "use_sim_time": LaunchConfiguration("use_sim_time"),

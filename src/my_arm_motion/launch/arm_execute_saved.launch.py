@@ -2,26 +2,24 @@
 
 from launch import LaunchDescription
 from launch.actions import DeclareLaunchArgument
-from launch.substitutions import (
-    LaunchConfiguration,
-    PathJoinSubstitution,
-)
+from launch.substitutions import LaunchConfiguration, PathJoinSubstitution
 from launch_ros.actions import Node
 from launch_ros.substitutions import FindPackageShare
 
 
 def generate_launch_description():
-    default_trajectory_file = PathJoinSubstitution([
+
+    trajectory_path = PathJoinSubstitution([
         FindPackageShare("my_arm_motion"),
         "trajectories",
-        "movej_no_obstacle.yaml",
+        LaunchConfiguration("trajectory_filename"),
     ])
 
     arguments = [
         DeclareLaunchArgument(
-            "trajectory_file",
-            default_value=default_trajectory_file,
-            description="Saved YAML trajectory file to execute",
+            "trajectory_filename",
+            default_value="movej_no_obstacle.yaml",
+            description="Name of the saved YAML trajectory",
         ),
         DeclareLaunchArgument(
             "start_tolerance_deg",
@@ -49,8 +47,10 @@ def generate_launch_description():
         name="arm_execute_saved",
         output="screen",
         parameters=[{
-            "trajectory_file": LaunchConfiguration("trajectory_file"),
-            "start_tolerance_deg": LaunchConfiguration("start_tolerance_deg"),
+            "trajectory_file": trajectory_path,
+            "start_tolerance_deg": LaunchConfiguration(
+                "start_tolerance_deg"
+            ),
             "execute": LaunchConfiguration("execute"),
             "use_sim_time": LaunchConfiguration("use_sim_time"),
         }],

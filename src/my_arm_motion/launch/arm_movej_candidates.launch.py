@@ -36,15 +36,22 @@ def generate_launch_description():
         "]",
     ])
 
-    default_trajectory_file = PathJoinSubstitution([
+    trajectory_filename = DeclareLaunchArgument(
+        "trajectory_filename",
+        default_value="movej_without_obstacle.yaml",
+        description="Name of the output YAML trajectory file",
+    )
+
+    trajectory_path = PathJoinSubstitution([
         FindPackageShare("my_arm_motion"),
         "trajectories",
-        "movej_no_obstacle.yaml",
+        LaunchConfiguration("trajectory_filename"),
     ])
 
     arguments = [
         target_xyz,
         target_rpy,
+        trajectory_filename,
         DeclareLaunchArgument(
             "ik_candidates",
             default_value="4",
@@ -91,11 +98,6 @@ def generate_launch_description():
             description="Maximum accepted joint jump [deg]",
         ),
         DeclareLaunchArgument(
-            "trajectory_file",
-            default_value=default_trajectory_file,
-            description="Output YAML trajectory file",
-        ),
-        DeclareLaunchArgument(
             "save_trajectory",
             default_value="true",
             description="Save the selected trajectory to YAML",
@@ -120,6 +122,7 @@ def generate_launch_description():
         parameters=[{
             "target_xyz": target_xyz_m,
             "target_rpy": target_rpy_rad,
+            "trajectory_file": trajectory_path,
             "ik_candidates": LaunchConfiguration("ik_candidates"),
             "plans_per_ik": LaunchConfiguration("plans_per_ik"),
             "seed_perturbation_deg": LaunchConfiguration("seed_perturbation_deg"),
@@ -129,7 +132,6 @@ def generate_launch_description():
             "min_singular_value": LaunchConfiguration("min_singular_value"),
             "max_condition_number": LaunchConfiguration("max_condition_number"),
             "max_joint_jump_deg": LaunchConfiguration("max_joint_jump_deg"),
-            "trajectory_file": LaunchConfiguration("trajectory_file"),
             "save_trajectory": LaunchConfiguration("save_trajectory"),
             "execute": LaunchConfiguration("execute"),
             "use_sim_time": LaunchConfiguration("use_sim_time"),
