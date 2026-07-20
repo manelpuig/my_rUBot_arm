@@ -382,7 +382,9 @@ ros2 launch my_arm_motion arm_movel_candidates.launch.py \
   fraction_threshold:=1.0 \
   candidate_attempts:=3 \
   max_step_scales:="[1.0,0.75,0.5]" \
-  check_singularities:=false \
+  check_singularities:=true \
+  min_singular_value:=0.001 \
+  max_condition_number:=1000.0 \
   avoid_collisions:=true \
   trajectory_filename:=movel_singularity_checked.yaml \
   save_trajectory:=true \
@@ -452,8 +454,11 @@ ros2 launch my_arm_motion arm_movej_candidates.launch.py \
   save_trajectory:=true \
   execute:=false
 ```
-> The trajectory selected is stored in Install folder with a default name. Copy it to `trajectroies` folder in repository if you want to keep it.
+The selected trajectory is stored in the installed package as
+`movej_without_obstacle.yaml`.
 
+Copy it to the source `trajectories` folder if you want to preserve it
+after deleting or rebuilding the `install` folder.
 
 Add a collision object.
 ```bash
@@ -478,7 +483,7 @@ Verify that the obstacle appears in RViz.
 
 ------------------------------------------------------------------------
 
-# 10. Experiment 6 --- MoveJ with obstacle
+# 10. Experiment 6 --- MoveJ with obstacle and save trajectory
 
 Plan the same motion with the obstacle present.
 
@@ -549,24 +554,9 @@ Observe:
 -   No OMPL planning
 -   Trajectory replay
 
-Discussion:
-
-Why is planning separated from execution?
-
 ------------------------------------------------------------------------
 
-# 13. Questions
-
-1.  Why can MoveJ generate many trajectories?
-2.  Why is MoveL more restrictive?
-3.  Why can't MoveL avoid a wrist singularity?
-4.  What information is stored in the YAML file?
-5.  Why is the Planning Scene important?
-6.  Why are planning and execution separated?
-
-------------------------------------------------------------------------
-
-# 14. Main conclusions
+# 12. Main conclusions
 
 MoveIt is not only a motion execution tool.
 

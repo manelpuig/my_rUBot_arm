@@ -1,0 +1,40 @@
+sequence_name: ur5e_handshake_planned
+
+defaults:
+  target_frame: base_link
+  max_velocity: 0.10
+  max_acceleration: 0.10
+  avoid_collisions: true
+  wait_after_sec: 1.0
+
+  max_step: 0.005
+  fraction_threshold: 1.0
+  jump_threshold: 0.0
+
+motions:
+  - name: home_start
+    motion_type: movej
+    target_xyz_mm: [0.0, -400.0, 500.0]
+    target_rpy_deg: [90.0, 0.0, 0.0]
+    ik_seed_joints_deg: [-60.0, -60.0, -100.0, 170.0, -90.0, 0.0]
+
+  - name: approach_handshake
+    motion_type: movel
+    target_xyz_mm: [-250.0, -350.0, 300.0]
+    target_rpy_deg: [90.0, 0.0, 0.0]
+
+  - name: handshake
+    motion_type: movel
+    target_xyz_mm: [-250.0, -350.0, 200.0]
+    target_rpy_deg: [90.0, 0.0, 0.0]
+
+  - name: retreat_handshake
+    motion_type: movel
+    target_xyz_mm: [-250.0, -350.0, 300.0]
+    target_rpy_deg: [90.0, 0.0, 0.0]
+
+  - name: home_end
+    motion_type: movej
+    target_xyz_mm: [0.0, -400.0, 500.0]
+    target_rpy_deg: [90.0, 0.0, 0.0]
+    ik_seed_joints_deg: [-60.0, -60.0, -100.0, 170.0, -90.0, 0.0]

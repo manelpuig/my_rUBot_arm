@@ -29,6 +29,7 @@ setup(
             "arm_movel_exe = my_arm_motion.arm_movel:main",
             "arm_movel_sing_exe = my_arm_motion.arm_movel_sing:main",
             "arm_motion_sequence_exe = my_arm_motion.arm_motion_sequence:main",
+            "arm_pose_sequence_exe = my_arm_motion.arm_pose_sequence:main",
             "arm_movej_candidates_exe = my_arm_motion.arm_movej_candidates:main",
             "arm_movel_candidates_exe = my_arm_motion.arm_movel_candidates:main",
             "arm_execute_saved_exe = my_arm_motion.arm_execute_saved:main",
