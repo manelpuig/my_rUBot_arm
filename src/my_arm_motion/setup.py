@@ -24,6 +24,7 @@ setup(
     license="BSD",
     entry_points={
         "console_scripts": [
+            "arm_pose_numeric_ik_exe = my_arm_motion.arm_pose_numeric_ik:main",
             "arm_movej_exe = my_arm_motion.arm_movej:main",
             "arm_movej_sing_exe = my_arm_motion.arm_movej_sing:main",
             "arm_movel_exe = my_arm_motion.arm_movel:main",

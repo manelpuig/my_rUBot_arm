@@ -11,10 +11,11 @@ RPY angles in degrees.
 Always plan with `execute:=false` first. Execute only after checking the
 trajectory in RViz2 and verifying the Planning Scene.
 
-## 1. Node overview
+## 1. Nodes overview
 
 | Node | Launch file | Purpose |
 |---|---|---|
+| `arm_pose_numeric_ik.py` | `arm_pose_numeric_ik.launch.py` | Computes numerical IK and optionally executes the resulting joint target directly. |
 | `arm_movej.py` | `arm_movej.launch.py` | Plan a joint-space MoveJ to a Cartesian target. |
 | `arm_movel.py` | `arm_movel.launch.py` | Plan a straight Cartesian MoveL. |
 | `arm_movej_sing.py` | `arm_movej_sing.launch.py` | MoveJ with numerical Jacobian and joint-jump checks. |
@@ -38,7 +39,7 @@ ArmMoveL -> ArmMoveLSingularityChecked -> ArmMoveLCandidates
 This does not start several ROS nodes. Launching a candidate executable starts
 one node containing the inherited functionality.
 
-## 2. Start the system
+## Start the system
 
 Build and source the workspace after modifying a Python, launch or YAML file:
 
@@ -78,6 +79,52 @@ ros2 action list | grep execute_trajectory
 ```
 
 <!-- Screenshot: Gazebo and RViz2 with the UR5e ready. -->
+
+## 2. Basic cartesian POSE example
+### `arm_pose_numeric_ik.py`: single-pose numerical IK
+
+This node is the simplest Cartesian-pose example in the package. It sends one target pose to MoveIt's `/compute_ik` service and obtains the corresponding values for `joint1` to `joint6`. It does not use OMPL, collision checking or singularity analysis.
+
+With `execute:=false`, the node only calculates and prints the numerical IK solution:
+
+```bash
+ros2 launch my_arm_motion arm_pose_numeric_ik.launch.py \
+  use_sim_time:=true \
+  target_xyz:="[0,-400,500]" \
+  target_rpy:="[90,0,0]" \
+  seed_from_joint_states:=false \
+  seed_joints:="[-60,-60,-100,170,-90,0]" \
+  ik_timeout_sec:=1.0 \
+  execute:=false
+```
+
+With `execute:=true`, the resulting joint configuration is sent directly to `FollowJointTrajectory`:
+
+```bash
+ros2 launch my_arm_motion arm_pose_numeric_ik.launch.py \
+  use_sim_time:=true \
+  target_xyz:="[0,-400,500]" \
+  target_rpy:="[90,0,0]" \
+  seed_from_joint_states:=false \
+  seed_joints:="[-60,-60,-100,170,-90,0]" \
+  duration_sec:=4.0 \
+  execute:=true
+```
+
+The controller interpolates the joints from their current state to the IK solution. Therefore, the TCP does not necessarily follow a straight Cartesian line, and the path between the two configurations is not checked for collisions.
+
+This node introduces the operation later repeated by `arm_pose_sequence.py`:
+
+```text
+arm_pose_numeric_ik: one Cartesian pose → numerical IK → one joint target
+
+arm_pose_sequence: several YAML poses → numerical IK for each pose
+                  → consecutive joint targets
+```
+
+Both nodes require MoveIt's `/compute_ik` service, but neither uses the MoveIt motion planner. They are suitable for simple, known and previously validated movements.
+
+<!-- Screenshot: numerical IK solution and direct single-pose execution. -->
 
 ## 3. Basic single motions
 
