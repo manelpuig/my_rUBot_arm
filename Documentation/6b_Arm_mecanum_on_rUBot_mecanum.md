@@ -1,262 +1,538 @@
-# ROS 2 Driver for a 6-DOF Servo Arm Mounted on a Mecanum Robot
+# Arm Mecanum on the rUBot Mecanum Platform
 
 ## Overview
 
-This package provides a ROS 2 driver for a 6-DOF educational robot arm built with SG90 servos and an Arduino Nano ESP32.
+The rUBot mecanum platform can be equipped with a servo arm to form a **mobile manipulator**.
 
-The arm is mounted on the **rUBot mecanum platform**, forming a mobile manipulator that can control both the mobile base and the arm simultaneously.
-
-The driver follows the same ROS 2 architecture used by industrial robots:
+A mobile manipulator combines:
 
 ```text
-MoveIt2 / Motion Nodes
-            │
-            ▼
-/arm_controller/joint_trajectory
-            │
-            ▼
-serial_trajectory_bridge_node
-            │ USB Serial
-            ▼
-Arduino Nano ESP32
-            │
-            ▼
-SG90 Servos
+Mobile base
++
+Robot arm
+```
+
+The mobile base provides movement in the environment, while the arm provides local manipulation relative to the robot platform.
+
+The complete robot contains two independent ROS 2 control chains:
+
+- one for the mecanum base;
+- one for the servo arm.
+
+The arm uses a simplified custom ROS 2 driver adapted from the main concepts of the `ros2_control` architecture.
+
+---
+
+## Mobile Manipulator Concept
+
+The mecanum base controls the global motion of the robot:
+
+```text
+x
+y
+yaw
+```
+
+The arm controls the local configuration of the manipulator:
+
+```text
+arm_joint1
+arm_joint2
+arm_joint3
+arm_joint4
+arm_joint5
+gripper
+```
+
+The two systems can receive commands independently and can operate at the same time.
+
+```text
+                       rUBot mobile manipulator
+
+        MOBILE BASE                              ROBOT ARM
+
+Navigation / teleoperation               Motion / kinematics node
+             ↓                                      ↓
+          /cmd_vel                    /arm_controller/joint_trajectory
+             ↓                                      ↓
+   mecanum base driver                 serial_trajectory_bridge_node
+             ↓                                      ↓
+      Arduino / motors                  Arduino Nano ESP32
+             ↓                                      ↓
+     mecanum wheels                     SG90 servos
 ```
 
 ---
 
-# System Architecture
+## Complete Robot Architecture
 
-The complete robot consists of two independent subsystems:
-
-## Mobile Base
+The complete robot is composed of two independent subsystems connected through the ROS 2 model and TF tree.
 
 ```text
+                           ROS 2 system
+
+        ┌──────────────────────┴──────────────────────┐
+        │                                             │
+        ▼                                             ▼
+
+   Mecanum base                                  Servo arm
+
+   /cmd_vel                                      /arm_controller/joint_trajectory
+        ↓                                             ↓
+   base driver                                serial_trajectory_bridge_node
+        ↓                                             ↓
+   Arduino + motor control                    Arduino firmware
+        ↓                                             ↓
+   mecanum wheels                             SG90 servos
+```
+
+The base and the arm use different command topics, different drivers and different low-level hardware.
+
+---
+
+## Mobile Base Command Path
+
+The mobile base receives velocity commands through:
+
+```text
+Topic:
 /cmd_vel
-    │
-    ▼
-my_robot_driver
-    │
-    ▼
-Arduino Nano ESP32
-    │
-    ▼
-Mecanum wheels
+
+Message:
+geometry_msgs/msg/Twist
 ```
 
-## Robot Arm
+The command path is:
 
 ```text
-MoveIt2 / Kinematics Nodes
-            │
-            ▼
-/arm_controller/joint_trajectory
-            │
-            ▼
-serial_trajectory_bridge_node
-            │
-            ▼
-Arduino Nano ESP32
-            │
-            ▼
-6 SG90 servos
+Navigation or teleoperation node
+                ↓
+             /cmd_vel
+                ↓
+      mecanum base driver
+                ↓
+      Arduino motor controller
+                ↓
+       four mecanum wheels
 ```
+
+The base driver converts the desired robot velocity into individual wheel commands.
 
 ---
 
-# Driver Node
+## Mobile Base State Path
 
-## Node
+The mobile base can provide measured wheel and odometry information.
 
 ```text
-serial_trajectory_bridge_node
+Wheel encoders
+      ↓
+Arduino
+      ↓
+mecanum base driver
+      ↓
+/odom
+/joint_states
+TF: odom → base_footprint
 ```
 
-## Subscription
+Typical base outputs are:
 
 ```text
+Topic:
+/odom
+
+Message:
+nav_msgs/msg/Odometry
+```
+
+and wheel-joint states through:
+
+```text
+Topic:
+/joint_states
+
+Message:
+sensor_msgs/msg/JointState
+```
+
+The wheel encoders provide measured information from the physical robot.
+
+---
+
+## Robot Arm Command Path
+
+The robot arm receives trajectory commands through:
+
+```text
+Topic:
 /arm_controller/joint_trajectory
-```
 
-Type:
-
-```text
+Message:
 trajectory_msgs/msg/JointTrajectory
 ```
 
-## Publication
+The command path is:
+
+```text
+Motion, GUI or kinematics node
+              ↓
+       JointTrajectory
+              ↓
+/arm_controller/joint_trajectory
+              ↓
+serial_trajectory_bridge_node
+              ↓
+USB serial communication
+              ↓
+Arduino Nano ESP32
+              ↓
+Servo.write()
+              ↓
+SG90 servos
+              ↓
+Physical arm joints and gripper
+```
+
+The `serial_trajectory_bridge_node`:
+
+- receives the trajectory;
+- executes the trajectory points sequentially;
+- converts ROS joint positions from radians to servo angles;
+- applies servo centres, direction signs and limits;
+- sends the servo commands through the serial port;
+- publishes the last commanded joint positions.
+
+The internal arm-driver architecture is described in:
+
+```text
+Documentation/5_servo_arm_driver.md
+```
+
+---
+
+## Robot Arm State Path
+
+The SG90 servos do not return their physical position to ROS 2.
+
+The current arm state path is:
+
+```text
+Last commanded arm positions
+              ↓
+serial_trajectory_bridge_node
+              ↓
+/joint_states
+```
+
+The arm publishes:
+
+```text
+Topic:
+/joint_states
+
+Message:
+sensor_msgs/msg/JointState
+```
+
+These values represent the expected arm configuration, not measured servo positions.
+
+This is different from the mobile base, where wheel encoders can provide measured feedback.
+
+---
+
+## URDF and TF Integration
+
+The arm must be integrated into the complete robot model.
+
+The arm base is connected to the mecanum `base_link` using a fixed joint:
+
+```xml
+<joint name="arm_mount_joint" type="fixed">
+```
+
+This joint defines:
+
+- the position of the arm on the platform;
+- the mounting height;
+- the arm orientation;
+- the offset from the centre of the mobile base.
+
+A simplified TF tree is:
+
+```text
+odom
+  ↓
+base_footprint
+  ↓
+base_link
+  ↓
+arm_base_link
+  ↓
+arm_joint1
+  ↓
+arm_link1
+  ↓
+...
+  ↓
+gripper / tool
+```
+
+When the mobile base moves, the complete arm TF tree moves with it.
+
+---
+
+## Base Motion and Arm Motion
+
+The base and the arm operate in different reference frames.
+
+### Base motion
+
+The base moves the complete robot in the environment.
+
+Typical commands are:
+
+```text
+move forward
+move sideways
+rotate
+```
+
+The base pose is normally represented relative to:
+
+```text
+odom
+```
+
+or:
+
+```text
+map
+```
+
+### Arm motion
+
+The arm moves the wrist, gripper or TCP relative to:
+
+```text
+base_link
+```
+
+or:
+
+```text
+arm_base_link
+```
+
+Typical commands are:
+
+```text
+move the wrist forward
+raise the arm
+rotate the wrist
+open or close the gripper
+```
+
+### Combined pose
+
+The TCP pose in the environment depends on both the mobile-base pose and the arm configuration.
+
+Conceptually:
+
+```text
+T_world_tcp
+=
+T_world_base
+·
+T_base_arm
+·
+T_arm_tcp
+```
+
+Therefore, moving the mobile base also changes the global pose of the arm TCP.
+
+---
+
+## Shared Joint-State Topic
+
+The mobile base and the arm may both publish to:
 
 ```text
 /joint_states
 ```
 
-Type:
+This is valid if they publish different joint names.
+
+Example base joints:
 
 ```text
-sensor_msgs/msg/JointState
+front_left_wheel_joint
+front_right_wheel_joint
+rear_left_wheel_joint
+rear_right_wheel_joint
 ```
 
-The driver publishes the commanded joint positions so that RViz, TF, and robot_state_publisher can represent the current arm configuration.
+Example arm joints:
+
+```text
+arm_joint1
+arm_joint2
+arm_joint3
+arm_joint4
+arm_joint5
+arm_joint6
+```
+
+`robot_state_publisher` uses these messages to update the joints of the complete robot model.
+
+The integration must avoid:
+
+- duplicated joint names;
+- two nodes publishing different values for the same joint;
+- inconsistent timestamps;
+- joint names that do not match the URDF.
 
 ---
 
-# Driver Operation
+## Independent and Simultaneous Control
 
-The driver performs the following steps:
-
-1. Receive a JointTrajectory message.
-2. Execute each trajectory point sequentially.
-3. Convert joint positions from radians to servo angles.
-4. Apply servo calibration offsets and sign corrections.
-5. Limit the servo range.
-6. Send six angles through the serial port.
-7. Update and publish `/joint_states`.
-
-Example serial message:
+The base and arm use independent ROS 2 interfaces:
 
 ```text
-90,120,45,90,90,90
-```
+Base command:
+/cmd_vel
 
----
-
-# Arduino Firmware
-
-The Arduino acts only as a low-level servo controller.
-
-Its responsibilities are:
-
-* Receive serial commands.
-* Parse six comma-separated angles.
-* Update the six SG90 servos.
-
-The Arduino does not perform:
-
-* Forward kinematics
-* Inverse kinematics
-* Motion planning
-* Trajectory generation
-
-All robot intelligence remains inside ROS 2.
-
----
-
-# Motion Layer
-
-Motion generation is implemented in:
-
-```text
-my_arm_motion
-my_arm_kinematics
-```
-
-These nodes can perform:
-
-* Forward kinematics
-* Inverse kinematics
-* Cartesian motions
-* MoveIt2 planning
-* Joint trajectories
-
-All commands are published to:
-
-```text
+Arm command:
 /arm_controller/joint_trajectory
 ```
 
----
+Therefore, the robot can receive base and arm commands at the same time.
 
-# Example Architecture
+For example:
 
 ```text
-            MoveIt2
-               │
-               ▼
-      /arm_controller/joint_trajectory
-               │
-               ▼
-   serial_trajectory_bridge_node
-               │
-          USB Serial
-               │
-               ▼
-        Arduino Nano ESP32
-               │
-               ▼
-            SG90 Servos
+Base:
+move slowly forward
 
-               ▲
-               │
-           /joint_states
+Arm:
+move the gripper to a target configuration
 ```
+
+However, the current system does not provide coordinated whole-body planning.
+
+It does not automatically:
+
+- coordinate the base trajectory with the arm trajectory;
+- check collisions between the arm and the environment;
+- optimise the combined base-arm motion;
+- generate a single trajectory for the complete mobile manipulator.
+
+The current architecture provides independent control of both subsystems.
 
 ---
 
-# Launch Driver
+## Complete Bringup
 
-```bash
-ros2 launch my_arm_driver serial_trajectory_bridge.launch.py \
-    serial_port:=/dev/ttyUSB0
-```
-
----
-
-# Test with a Single Target
-
-Launch the driver:
-
-```bash
-ros2 launch my_arm_driver serial_trajectory_bridge.launch.py
-```
-
-Send a target configuration:
-
-```bash
-ros2 run my_arm_driver send_joint_target_node \
-    --ros-args \
-    -p target_joints_deg:="[0,0,0,0,0,0]"
-```
-
-Another example:
-
-```bash
-ros2 run my_arm_driver send_joint_target_node \
-    --ros-args \
-    -p target_joints_deg:="[20,-30,40,0,0,0]"
-```
-
----
-
-# Test with a Trajectory
-
-Launch the driver:
-
-```bash
-ros2 launch my_arm_driver serial_trajectory_bridge.launch.py
-```
-
-Run:
-
-```bash
-ros2 run my_arm_driver send_joint_trajectory_node
-```
-
-The node sends multiple trajectory points, and the driver executes them sequentially.
-
----
-
-# Typical Integration
-
-The arm driver is intended to be integrated into the complete robot bringup:
+The complete robot bringup should start the base driver, arm driver, robot model and visualisation.
 
 ```text
 my_robot_bringup
 │
-├── my_robot_driver          (mecanum base)
-├── serial_trajectory_bridge_node (robot arm)
+├── mecanum base driver
+│     ├── subscribes to /cmd_vel
+│     ├── publishes /odom
+│     └── publishes wheel joint states
+│
+├── serial_trajectory_bridge_node
+│     ├── subscribes to /arm_controller/joint_trajectory
+│     └── publishes arm joint states
+│
 ├── robot_state_publisher
+│     └── publishes the complete TF tree
+│
 └── RViz
+      └── displays the base, arm and gripper
 ```
 
-This allows simultaneous control of the mobile base and the 6-DOF robot arm, creating a complete ROS 2 mobile manipulator.
+This architecture allows the complete mobile manipulator to be represented and controlled within the same ROS 2 system.
+
+---
+
+## Basic Test Sequence
+
+### 1. Start the complete robot bringup
+
+```bash
+ros2 launch my_robot_bringup my_robot_nano_bringup_hw.launch.py
+```
+
+The exact launch file may depend on the final integration of the arm into the mecanum repository.
+
+### 2. Verify the mobile-base command topic
+
+```bash
+ros2 topic info /cmd_vel
+```
+
+### 3. Verify the arm command topic
+
+```bash
+ros2 topic info /arm_controller/joint_trajectory
+```
+
+### 4. Verify the complete joint-state topic
+
+```bash
+ros2 topic echo /joint_states
+```
+
+The output should contain wheel-joint names and arm-joint names.
+
+### 5. Verify the TF tree
+
+```bash
+ros2 run tf2_tools view_frames
+```
+
+The generated TF tree should connect:
+
+```text
+odom
+→ base_footprint
+→ base_link
+→ arm_base_link
+→ arm links
+→ gripper
+```
+
+### 6. Test the base
+
+Publish a small velocity command or use the teleoperation node.
+
+### 7. Test the arm
+
+Run the joint slider GUI or send a simple joint target.
+
+For the first hardware tests:
+
+- keep the robot stationary;
+- keep the arm clear of obstacles;
+- move one subsystem at a time;
+- use small velocities and small joint changes.
+
+---
+
+## Current Limitations
+
+The current mobile manipulator has the following limitations:
+
+- the base and arm are controlled independently;
+- there is no coordinated whole-body planner;
+- the SG90 servos do not provide measured position feedback;
+- the arm `/joint_states` contain commanded positions;
+- direct GUI control does not perform collision checking;
+- the gripper is controlled as the sixth command of the arm driver;
+- the base and arm use separate low-level control chains;
+- simultaneous commands are possible, but they are not automatically synchronised.
+
+These simplifications are appropriate for an educational mobile manipulator and make the architecture easier to understand and test.

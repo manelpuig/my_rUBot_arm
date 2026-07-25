@@ -1,20 +1,71 @@
+# Joint Slider GUI
 
-# Joint slider GUI 
+## Overview
 
-This proposal adds a small Tkinter GUI that commands the six arm joints through:
+This package provides two Tkinter-based GUI nodes for the rUBot mecanum servo arm:
+
+- **Joint Slider GUI**: directly commands the arm joints and gripper servo.
+- **Cartesian Slider GUI**: commands a Cartesian wrist-centre target using analytical inverse kinematics.
+
+Both GUIs are **motion-command nodes**. They do not communicate directly with the Arduino or the servos. Instead, they publish ROS 2 trajectory commands that are executed by the custom hardware driver.
+
+## Control Architecture
 
 ```text
+Joint Slider GUI
+        ↓
+JointTrajectory message
+        ↓
 /arm_controller/joint_trajectory
+        ↓
+serial_trajectory_bridge_node
+        ↓
+Serial communication
+        ↓
+Arduino firmware
+        ↓
+SG90 servos
 ```
 
-The GUI publishes the latest complete target at a maximum rate of 10 Hz while a slider is moving. It does not start six external ROS processes and it does not publish old intermediate targets.
+The GUI publishes desired joint targets.
 
-If Tkinter is not already installed:
+The `serial_trajectory_bridge_node`:
+
+- receives the trajectory;
+- converts ROS joint positions to calibrated servo angles;
+- applies servo limits;
+- sends the serial command to the Arduino;
+- publishes `/joint_states`.
+
+The published `/joint_states` message contains the **last commanded joint positions**, not measured servo positions.
+
+---
+
+# Joint Slider GUI
+
+This node provides a small Tkinter interface for commanding the five arm joints and the gripper servo.
+
+It publishes:
+
+```text
+Topic:
+/arm_controller/joint_trajectory
+
+Message:
+trajectory_msgs/msg/JointTrajectory
+```
+
+Each message contains the latest complete joint target.
+
+The publication rate is limited to a maximum of **10 Hz** while a slider is moving. Old intermediate targets are discarded.
+
+If Tkinter is not installed:
 
 ```bash
 sudo apt install python3-tk
 ```
-This node is installed on the package `my_arm_driver`
+
+The node is installed in the `my_arm_driver` package.
 
 ## Build
 
@@ -26,36 +77,36 @@ source install/setup.bash
 
 ## Run
 
-Terminal 1 — start the physical arm driver:
+Terminal 1:
 
 ```bash
 ros2 launch my_arm_driver serial_trajectory_bridge.launch.py \
     serial_port:=/dev/ttyUSB0
 ```
 
-Terminal 2 — start the slider GUI:
+Terminal 2:
 
 ```bash
 ros2 launch my_arm_driver joint_slider_gui.launch.py
 ```
 
-You can also run the node directly:
+or
 
 ```bash
 ros2 run my_arm_driver joint_slider_gui_node
 ```
 
-The default slider range is `-90` to `+90` degrees. These joint targets are converted by the existing bridge to servo commands centered at 90 degrees and limited to the configured servo range.
+The GUI targets are expressed as joint angles in degrees. They are converted into radians inside the published `JointTrajectory`. The serial bridge converts them back into calibrated servo angles using the configured servo centres, directions and limits.
 
-## Optional parameters
+## Optional Parameters
 
-Change the rate:
+Change the publication rate:
 
 ```bash
 ros2 launch my_arm_driver joint_slider_gui.launch.py publish_rate_hz:=5.0
 ```
 
-Change the limits directly with ROS parameters:
+Change the joint limits:
 
 ```bash
 ros2 run my_arm_driver joint_slider_gui_node --ros-args \
@@ -65,28 +116,37 @@ ros2 run my_arm_driver joint_slider_gui_node --ros-args \
 
 For the first hardware test, keep the arm clear of obstacles and move one slider at a time through a small angle.
 
-# Mecanum Cartesian slider
+---
 
-This proposal adds a GUI to `my_arm_kinematics`. The GUI defines the position of the wrist centre (`joint4`) and uses analytical inverse kinematics to calculate `joint1`, `joint2` and `joint3`.
+# Mecanum Cartesian Slider
+
+This GUI defines a Cartesian wrist-centre target and calculates the first three arm joints using analytical inverse kinematics.
+
+The resulting complete joint target is published as a `trajectory_msgs/msg/JointTrajectory` message and executed by the same custom hardware driver used by the Joint Slider GUI.
 
 ## Controls
 
 | GUI control | Robot command |
 |---|---|
-| `x`, `y`, `z` | Wrist-centre position relative to `base_link`, in millimetres |
-| `joint4` | Wrist pitch, in degrees |
-| `joint5` | Gripper roll, in degrees |
-| `Open/Closed` | Calibrated joint6 servo target |
+| `x`, `y`, `z` | Wrist-centre position relative to `base_link` (mm) |
+| `joint4` | Wrist pitch (deg) |
+| `joint5` | Wrist roll (deg) |
+| `Open/Closed` | Calibrated gripper-servo command |
 | `Elbow up/down` | Analytical IK solution branch |
 
 The target is published to:
 
 ```text
+Topic:
 /arm_controller/joint_trajectory
+
+Message:
+trajectory_msgs/msg/JointTrajectory
 ```
 
-The node does not publish when it starts. With `Live send` enabled, it publishes the newest valid target at a maximum rate of 10 Hz while a control is changing.
+The node does not publish when it starts.
 
+With **Live send** enabled, it publishes the newest valid target at a maximum rate of 10 Hz while a control is changing.
 
 If Tkinter is not installed:
 
@@ -102,7 +162,7 @@ colcon build --packages-select my_arm_kinematics --symlink-install
 source install/setup.bash
 ```
 
-## Run with the physical arm
+## Run
 
 Terminal 1:
 
@@ -117,9 +177,11 @@ Terminal 2:
 ros2 launch my_arm_kinematics mecanum_cartesian_slider.launch.py
 ```
 
-## Gripper calibration
+## Gripper Calibration
 
-The current serial bridge treats all six commands as relative servo angles. For this reason, this first version uses two configurable joint6 angles:
+The current implementation treats the gripper as the sixth joint command.
+
+Configure the open and closed gripper angles:
 
 ```bash
 ros2 launch my_arm_kinematics mecanum_cartesian_slider.launch.py \
@@ -127,16 +189,28 @@ ros2 launch my_arm_kinematics mecanum_cartesian_slider.launch.py \
     gripper_closed_joint_deg:=45.0
 ```
 
-Change these two values after checking the real gripper direction and mechanical limits.
+The serial bridge converts each joint command into a physical servo angle using the configured servo centre, direction and limits.
 
-## Safety and IK behaviour
+## Safety and IK Behaviour
 
 The node verifies:
 
-- whether the wrist target is reachable;
-- whether the calculated joints are within their configured limits;
-- whether the target is too close to the joint1 axis.
+- the wrist-centre target is reachable;
+- the calculated joints are inside their configured limits;
+- the target is not too close to the joint1 axis.
 
-An invalid target is displayed in red and is not published. For the first hardware test, disable `Live send`, keep the arm clear of obstacles, and use the `Send target` button.
+Invalid targets are displayed in red and are not published.
 
-The Cartesian target is the position of the wrist centre, not the final TCP. Moving joint4 therefore changes the TCP position. A later version can compensate for `L4 + tool_x` and control the final TCP analytically.
+For the first hardware test:
+
+- disable **Live send**;
+- keep the arm clear of obstacles;
+- use the **Send target** button.
+
+## Wrist Centre and TCP
+
+The analytical IK controls the wrist-centre position, not the final TCP position.
+
+Changing `joint4` therefore changes the position of the tool or gripper tip.
+
+A future version can include the final link and tool offset so that the analytical IK directly controls the TCP position.
