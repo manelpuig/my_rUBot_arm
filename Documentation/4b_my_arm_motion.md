@@ -335,6 +335,8 @@ ros2 launch my_arm_motion arm_pose_sequence.launch.py \
   use_sim_time:=true \
   sequence_file:=ur5e_handshake.yaml
 ```
+![ur5e_moveit](./Images/4_Motion/ur5e_pose_sequence_moveit.png)
+![ur5e_gazebo](./Images/4_Motion/ur5e_pose_sequence_gazebo.png)
 
 Execution is controlled by the YAML field `common.execute`.
 

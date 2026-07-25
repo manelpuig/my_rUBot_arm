@@ -8,9 +8,9 @@ This repository contains several robot-arm models described with **URDF** and **
 - custom 5-DoF arm mounted on a mecanum platform.
 
 <p align="center">
-  <img src="./Images/Puma.png" alt="Puma Robot" width="200">
-  <img src="./Images/ur5e.png" alt="UR5e Robot" width="250">
-  <img src="./Images/my_arm_mecanum_5dof.jpg" alt="Mecanum 5DoF Arm" width="250">
+  <img src="./Images/2_Model/Puma.png" alt="Puma Robot" width="200">
+  <img src="./Images/2_Model/ur5e.png" alt="UR5e Robot" width="250">
+  <img src="./Images/2_Model/my_arm_mecanum_5dof.jpg" alt="Mecanum 5DoF Arm" width="250">
 </p>
 
 The robot description defines the links, joints, joint axes, limits, reference frames, visual and collision geometry, inertial properties and tool frame.
@@ -26,7 +26,7 @@ ros2 launch my_arm_description display.launch.py \
   use_sim_time:=false \
   model:=my_arm.urdf.xacro
 ```
-![](./Images/my_arm_rviz.png)
+![](./Images/2_Model/my_arm_rviz.png)
 
 ### PUMA arm
 
@@ -35,7 +35,7 @@ ros2 launch my_arm_description display.launch.py \
   use_sim_time:=false \
   model:=my_arm_puma.urdf.xacro
 ```
-![](./Images/my_arm_puma_rviz.png)
+![](./Images/2_Model/my_arm_puma_rviz.png)
 
 ### UR5e arm
 
@@ -44,7 +44,7 @@ ros2 launch my_arm_description display.launch.py \
   use_sim_time:=false \
   model:=my_arm_ur5e.urdf.xacro
 ```
-![](./Images/my_arm_ur5e_rviz.png)
+![](./Images/2_Model/my_arm_ur5e_rviz.png)
 
 ### Mecanum 5-DoF arm
 
@@ -53,7 +53,7 @@ ros2 launch my_arm_description display.launch.py \
   use_sim_time:=false \
   model:=my_arm_mecanum_5dof.urdf.xacro
 ```
-![](./Images/my_arm_mecanum_5dof_rviz.png)
+![](./Images/2_Model/my_arm_mecanum_5dof_rviz.png)
 
 ## RViz2 and Gazebo
 
@@ -94,6 +94,10 @@ Gazebo simulated joints
 This separation allows the motion nodes, controllers and simulated hardware to be developed and tested independently.
 
 The `controller_manager` loads, configures and activates the ROS 2 controllers and connects them to the available command and state interfaces.
+
+This architecture is described in:
+
+![](./Images/2_Model/Gazebo_ros2_control.png)
 
 ## ros2_control inside the URDF
 
@@ -216,27 +220,7 @@ The controller exposes two useful ROS interfaces:
 
 The first is a topic interface. The second is a ROS 2 action interface that can report whether a trajectory was accepted and completed.
 
-## Gazebo control architecture
 
-The complete Gazebo control chain is:
-
-```text
-JointTrajectory or FollowJointTrajectory
-                    ↓
-arm_controller
-                    ↓
-controller_manager
-                    ↓
-GazeboSimSystem
-                    ↓
-Gazebo simulated joints
-
-GazeboSimSystem state interfaces
-                    ↓
-joint_state_broadcaster
-                    ↓
-/joint_states
-```
 ## Bring up the robot in Gazebo
 
 Example with the PUMA model:
@@ -246,7 +230,7 @@ ros2 launch my_arm_gazebo my_arm_gazebo.launch.py \
   use_sim_time:=true \
   model:=my_arm_puma.urdf.xacro
 ```
-![](./Images/my_arm_puma2_gz.png)
+![](./Images/2_Model/my_arm_puma2_gz.png)
 
 Example with the UR5e model:
 
@@ -255,7 +239,7 @@ ros2 launch my_arm_gazebo my_arm_gazebo.launch.py \
   use_sim_time:=true \
   model:=my_arm_ur5e.urdf.xacro
 ```
-![](./Images/my_arm_ur5e_gz.png)
+![](./Images/2_Model/my_arm_ur5e_gz.png)
 
 The bringup performs the following main steps:
 
@@ -351,8 +335,8 @@ Check that the joint values change:
 ros2 topic echo /joint_states
 ```
 
-![](./Images/send_joints_puma.png)
-![](./Images/send_joints_ur5e.png)
+![](./Images/2_Model/send_joints_puma.png)
+![](./Images/2_Model/send_joints_ur5e.png)
 
 Forward and inverse kinematics are introduced in the next document.
 

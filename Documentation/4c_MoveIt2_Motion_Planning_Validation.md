@@ -109,8 +109,8 @@ ros2 launch ur5e_moveit_config moveit_rviz.launch.py \
 
 Move the robot to **Ready**.
 
-![setup](./Images/Motion/ur5e_ready_gazebo.png)
-![](./Images/Motion/ur5e_ready_moveit.png)
+![setup](./Images/4_Motion/ur5e_ready_gazebo.png)
+![](./Images/4_Motion/ur5e_ready_moveit.png)
 
 Do **not** use Home because the current Home pose is close to a wrist
 singularity.
@@ -479,7 +479,7 @@ ros2 launch my_arm_motion arm_test_scene.launch.py \
 
 Verify that the obstacle appears in RViz.
 
-![obstacle](./Images/Motion/ur5e_obstacle.png)
+![obstacle](./Images/4_Motion/ur5e_obstacle.png)
 
 ------------------------------------------------------------------------
 
@@ -545,8 +545,8 @@ ros2 launch my_arm_motion arm_execute_saved.launch.py \
   start_tolerance_deg:=5.0 \
   execute:=true
 ```
-![target](./Images/Motion/ur5e_target_gazebo.png)
-![target](./Images/Motion/ur5e_target_moveit.png)
+![target](./Images/4_Motion/ur5e_target_gazebo.png)
+![target](./Images/4_Motion/ur5e_target_moveit.png)
 
 Observe:
 

@@ -230,8 +230,8 @@ ros2 launch my_arm_kinematics puma_ikine_pose.launch.py \
   elbow:=up \
   wrist:=noflip
 ```
-![](./Images/Puma_gz_ik_analytic.png)
-![](./Images/Puma_gz_ik_analytic_shell.png)
+![](./Images/3_kine/Puma_gz_ik_analytic.png)
+![](./Images/3_kine/Puma_gz_ik_analytic_shell.png)
 
 Main launch arguments:
 

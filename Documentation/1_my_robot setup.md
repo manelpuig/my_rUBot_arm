@@ -10,7 +10,7 @@ The design goal is **clarity and pedagogy**: each package has a single responsib
 
 **Webgraphy:**
 - [Real robotic arm](https://www.amazon.es/gp/product/B0B134Q4SN)
-![](./Images/my_arm_hw.png)
+![](./Images/1_setup/my_arm_hw.png)
 
 
 ---
