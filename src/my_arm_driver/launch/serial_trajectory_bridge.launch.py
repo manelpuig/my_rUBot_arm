@@ -33,12 +33,12 @@ def generate_launch_description():
                 "baudrate": LaunchConfiguration("baudrate"),
 
                 "joint_names": [
-                    "arm_joint1",
-                    "arm_joint2",
-                    "arm_joint3",
-                    "arm_joint4",
-                    "arm_joint5",
-                    "arm_joint6",
+                    "joint1",
+                    "joint2",
+                    "joint3",
+                    "joint4",
+                    "joint5",
+                    "joint6",
                 ],
 
                 "publish_joint_states": True,
@@ -48,6 +48,8 @@ def generate_launch_description():
                 "servo_sign": [1, 1, 1, 1, 1, 1],
                 "servo_min_deg": [0, 0, 0, 0, 0, 0],
                 "servo_max_deg": [180, 180, 180, 180, 180, 180],
+                "initial_joints_deg": [0.0,0.0,0.0,0.0,0.0,0.0],
+                "send_initial_position": False,
             }],
         ),
     ])

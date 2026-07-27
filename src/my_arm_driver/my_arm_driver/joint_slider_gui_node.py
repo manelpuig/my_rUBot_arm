@@ -22,8 +22,8 @@ class JointSliderGuiNode(Node):
             ["joint1", "joint2", "joint3", "joint4", "joint5", "joint6"],
         )
         self.declare_parameter("initial_joints_deg", [0.0] * 6)
-        self.declare_parameter("joint_min_deg", [-90.0] * 6)
-        self.declare_parameter("joint_max_deg", [90.0] * 6)
+        self.declare_parameter("joint_min_deg", [-90, -90, -90, -90, -90, 0])
+        self.declare_parameter("joint_max_deg", [ 90,  90,  90,  90,  90, 45])
         self.declare_parameter("publish_rate_hz", 10.0)
         self.declare_parameter("duration", 0.0)
 

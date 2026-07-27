@@ -75,10 +75,10 @@ class MecanumCartesianSlider(Node):
         )
 
         # Geometry from my_arm_mecanum.urdf.xacro.
-        self.declare_parameter("base_z", 0.030)
-        self.declare_parameter("L1", 0.055)
-        self.declare_parameter("L2", 0.075)
-        self.declare_parameter("L3", 0.075)
+        self.declare_parameter("base_z", 0.012)
+        self.declare_parameter("L1", 0.105)
+        self.declare_parameter("L2", 0.135)
+        self.declare_parameter("L3", 0.125)
 
         self.declare_parameter("initial_wrist_xyz_mm", [120.0, 0.0, 100.0])
         self.declare_parameter("x_limits_mm", [30.0, 150.0])
@@ -90,8 +90,8 @@ class MecanumCartesianSlider(Node):
         self.declare_parameter("initial_q5_deg", 0.0)
 
         self.declare_parameter("elbow", "up")
-        self.declare_parameter("joint_min_deg", [-90.0] * 6)
-        self.declare_parameter("joint_max_deg", [90.0] * 6)
+        self.declare_parameter("joint_min_deg", [-90, -90, -90, -90, -90, 0])
+        self.declare_parameter("joint_max_deg", [90, 90, 90, 90, 90, 45])
 
         # Temporary physical-driver convention for joint6. These values are
         # relative servo angles and must be calibrated on the real gripper.
